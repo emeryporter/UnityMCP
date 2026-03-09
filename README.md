@@ -7,8 +7,9 @@
 
 Unity-native [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for AI-powered game development. Connect Claude, Codex, Cursor, and other AI assistants directly to the Unity Editor — no Node.js, Python, or external runtimes required. Install the package and start building.
 
-> [!TIP]
-> **New in v2.0** — Vision capture, scene checkpoints, recipes, scene diagnostics, guided workflows, action-based tools, scene export, and a redesigned editor window.
+> **New in v2.0**
+>
+> Vision capture, scene checkpoints, recipes, scene diagnostics, guided workflows, action-based tools, scene export, and a redesigned editor window.
 
 ## Features
 
