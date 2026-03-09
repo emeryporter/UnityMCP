@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -68,12 +69,22 @@ namespace UnityMCP.Editor.Core
         private static bool s_initialized = false;
 
         /// <summary>
-        /// Re-entrancy guard for PollForRequests. The native proxy keeps s_has_request=1
-        /// until AFTER C# calls SendResponse, so re-entrant EditorApplication.update calls
-        /// (e.g., from Camera.Render or AssetDatabase operations during tool execution)
-        /// would re-process the same request, creating duplicate side effects.
+        /// Re-entrancy guard for PollForRequests. Although GetPendingRequest() atomically
+        /// consumes requests (clears s_has_request), this guard provides additional safety
+        /// against re-entrant EditorApplication.update calls during tool execution
+        /// (e.g., from Camera.Render or AssetDatabase operations).
         /// </summary>
         private static bool s_isProcessingRequest = false;
+
+        /// <summary>
+        /// Deduplication cache: maps JSON-RPC request ID → cached response.
+        /// The MCP transport may retry requests with the same ID if the first
+        /// attempt times out. Without deduplication, each retry executes the
+        /// tool again (creating duplicate GameObjects, etc.).
+        /// </summary>
+        private static readonly Dictionary<string, string> s_responseCache = new Dictionary<string, string>();
+        private static readonly Queue<string> s_responseCacheOrder = new Queue<string>();
+        private const int ResponseCacheCapacity = 20;
 
         /// <summary>
         /// Gets whether the MCP proxy is currently active.
@@ -339,6 +350,15 @@ namespace UnityMCP.Editor.Core
                 string toolName = ExtractToolName(jsonRequest);
                 string argumentsSummary = toolName != null ? ExtractArguments(jsonRequest) : null;
 
+                // Deduplication: if we already processed a request with this ID,
+                // return the cached response instead of re-executing the tool.
+                // The MCP transport may retry requests with the same ID on timeout.
+                if (requestId != null && requestId != "null" && s_responseCache.TryGetValue(requestId, out string cachedResponse))
+                {
+                    SendResponse(cachedResponse);
+                    return;
+                }
+
                 var stopwatch = Stopwatch.StartNew();
 
                 try
@@ -353,6 +373,7 @@ namespace UnityMCP.Editor.Core
                             -32603,
                             $"Response too large ({response.Length} bytes). Maximum supported size is {MaxResponseSize - 1} bytes. Try reducing max_depth or using more specific queries.",
                             requestId);
+                        CacheResponse(requestId, errorResponse);
                         SendResponse(errorResponse);
                         if (toolName != null)
                             ActivityLog.Record(toolName, false, "Response too large",
@@ -360,6 +381,7 @@ namespace UnityMCP.Editor.Core
                         return;
                     }
 
+                    CacheResponse(requestId, response);
                     SendResponse(response);
                     stopwatch.Stop();
                     if (toolName != null)
@@ -370,6 +392,7 @@ namespace UnityMCP.Editor.Core
                 {
                     stopwatch.Stop();
                     string errorResponse = BuildErrorResponse(-32603, exception.Message, requestId);
+                    CacheResponse(requestId, errorResponse);
                     SendResponse(errorResponse);
                     if (toolName != null)
                         ActivityLog.Record(toolName, false, exception.Message,
@@ -612,6 +635,25 @@ namespace UnityMCP.Editor.Core
                 argsJson = argsJson.Substring(0, maxLength) + "...";
 
             return argsJson;
+        }
+
+        /// <summary>
+        /// Caches a response by request ID for deduplication.
+        /// Maintains a bounded FIFO cache of recent responses.
+        /// </summary>
+        private static void CacheResponse(string requestId, string response)
+        {
+            if (requestId == null || requestId == "null" || response == null)
+                return;
+
+            s_responseCache[requestId] = response;
+            s_responseCacheOrder.Enqueue(requestId);
+
+            while (s_responseCacheOrder.Count > ResponseCacheCapacity)
+            {
+                string oldestRequestId = s_responseCacheOrder.Dequeue();
+                s_responseCache.Remove(oldestRequestId);
+            }
         }
 
         /// <summary>

@@ -56,6 +56,7 @@ static volatile int s_has_response = 0;
 /* Flag set by DllMain/destructor to signal the server thread to exit and clean up */
 static volatile int s_unloading = 0;
 
+
 /*
  * Buffer for building dynamic error responses with request ID
  */
