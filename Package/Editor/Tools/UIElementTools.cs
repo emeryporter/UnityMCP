@@ -772,8 +772,6 @@ namespace UnityMCP.Editor.Tools
                 };
             }
 
-            Undo.RecordObject(go, $"Add {effectType} effect");
-
             Component addedComponent = null;
             var warnings = new List<string>();
 
@@ -1059,7 +1057,7 @@ namespace UnityMCP.Editor.Tools
             var allObjects = GetAllSceneObjects(searchInactive);
             foreach (var gameObject in allObjects)
             {
-                if (gameObject.name == target)
+                if (gameObject.name.Equals(target, StringComparison.OrdinalIgnoreCase))
                 {
                     return gameObject;
                 }
@@ -1204,9 +1202,7 @@ namespace UnityMCP.Editor.Tools
             var existing = go.GetComponent<T>();
             if (existing != null) return existing;
 
-            var component = go.AddComponent<T>();
-            Undo.RegisterCreatedObjectUndo(component, $"Add {typeof(T).Name}");
-            return component;
+            return Undo.AddComponent<T>(go);
         }
 
         // ─────────────────────────────────────────────
