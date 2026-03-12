@@ -69,11 +69,12 @@ namespace UnityMCP.Editor.Tools
             [MCPParam("canvas_target", "Instance ID or name/path of the Canvas (searches all if omitted)")] string canvasTarget = null,
             [MCPParam("element_type", "Element type to match (e.g. button, text, image)")] string elementType = null,
             [MCPParam("name_pattern", "Name substring or regex pattern (case-insensitive)")] string namePattern = null,
-            [MCPParam("has_component", "Component type name to filter by")] string hasComponent = null)
+            [MCPParam("has_component", "Component type name to filter by")] string hasComponent = null,
+            [MCPParam("max_results", "Maximum number of results to return", Minimum = 1, Maximum = 500)] int? maxResults = null)
         {
             try
             {
-                return HandleFind(canvasTarget, elementType, namePattern, hasComponent);
+                return HandleFind(canvasTarget, elementType, namePattern, hasComponent, maxResults ?? 100);
             }
             catch (MCPException) { throw; }
             catch (Exception ex) { throw new MCPException($"Error finding UI elements: {ex.Message}", ex, MCPErrorCodes.InternalError); }
@@ -231,7 +232,7 @@ namespace UnityMCP.Editor.Tools
         //  Find Handler
         // ─────────────────────────────────────────────
 
-        private static object HandleFind(string canvasTarget, string elementType, string namePattern, string hasComponent)
+        private static object HandleFind(string canvasTarget, string elementType, string namePattern, string hasComponent, int maxResults)
         {
             if (string.IsNullOrEmpty(elementType) && string.IsNullOrEmpty(namePattern) && string.IsNullOrEmpty(hasComponent))
             {
@@ -282,13 +283,15 @@ namespace UnityMCP.Editor.Tools
                 var allTransforms = canvas.GetComponentsInChildren<Transform>(true);
                 foreach (var t in allTransforms)
                 {
+                    if (matches.Count >= maxResults) break;
+
                     var go = t.gameObject;
+                    string detectedType = DetectElementType(go);
 
                     // Filter by element_type
                     if (!string.IsNullOrEmpty(elementType))
                     {
-                        string detected = DetectElementType(go);
-                        if (!string.Equals(detected, elementType, StringComparison.OrdinalIgnoreCase))
+                        if (!string.Equals(detectedType, elementType, StringComparison.OrdinalIgnoreCase))
                         {
                             continue;
                         }
@@ -335,7 +338,7 @@ namespace UnityMCP.Editor.Tools
                         { "name", go.name },
                         { "instance_id", go.GetInstanceID() },
                         { "active", go.activeSelf },
-                        { "element_type", DetectElementType(go) },
+                        { "element_type", detectedType },
                         { "canvas", canvas.gameObject.name },
                         { "path", GetHierarchyPath(go.transform) }
                     };
@@ -351,12 +354,15 @@ namespace UnityMCP.Editor.Tools
 
                     matches.Add(match);
                 }
+
+                if (matches.Count >= maxResults) break;
             }
 
             return new
             {
                 success = true,
                 count = matches.Count,
+                truncated = matches.Count >= maxResults,
                 filters = new Dictionary<string, object>
                 {
                     { "element_type", elementType ?? (object)null },
