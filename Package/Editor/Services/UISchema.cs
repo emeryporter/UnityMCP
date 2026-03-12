@@ -289,8 +289,11 @@ namespace UnityMCP.Editor.Services
 
                 // ── Text / TMP text ──
                 case "font_size":
-                    ApplyTextProperty(go, elementType, (text) => text.fontSize = Convert.ToInt32(value),
-                        tmpAction: (tmp) => tmp.fontSize = Convert.ToSingle(value));
+                    ApplyTextProperty(go, elementType, (text) => text.fontSize = Convert.ToInt32(value)
+#if UNITY_MCP_TMP
+                        , tmpAction: (tmp) => tmp.fontSize = Convert.ToSingle(value)
+#endif
+                    );
                     break;
 
                 case "alignment":
@@ -306,8 +309,11 @@ namespace UnityMCP.Editor.Services
                     break;
 
                 case "line_spacing":
-                    ApplyTextProperty(go, elementType, (text) => text.lineSpacing = Convert.ToSingle(value),
-                        tmpAction: (tmp) => tmp.lineSpacing = Convert.ToSingle(value));
+                    ApplyTextProperty(go, elementType, (text) => text.lineSpacing = Convert.ToSingle(value)
+#if UNITY_MCP_TMP
+                        , tmpAction: (tmp) => tmp.lineSpacing = Convert.ToSingle(value)
+#endif
+                    );
                     break;
 
                 // ── Image ──
@@ -897,11 +903,9 @@ namespace UnityMCP.Editor.Services
         /// Applies an action to the Text or TMP component on the given GO (or its children for composite elements).
         /// </summary>
         private static void ApplyTextProperty(GameObject go, string elementType,
-            TextAction textAction,
+            TextAction textAction
 #if UNITY_MCP_TMP
-            TMPAction tmpAction = null
-#else
-            object tmpAction = null
+            , TMPAction tmpAction = null
 #endif
         )
         {
@@ -1066,6 +1070,16 @@ namespace UnityMCP.Editor.Services
                 float g = dict.ContainsKey("g") ? Convert.ToSingle(dict["g"]) : 0;
                 float b = dict.ContainsKey("b") ? Convert.ToSingle(dict["b"]) : 0;
                 float a = dict.ContainsKey("a") ? Convert.ToSingle(dict["a"]) : 1;
+                return new Color(r, g, b, a);
+            }
+
+            // Handle [r, g, b] or [r, g, b, a] arrays (arrive as List<object> from JSON deserialization)
+            if (value is List<object> list && list.Count >= 3)
+            {
+                float r = Convert.ToSingle(list[0]);
+                float g = Convert.ToSingle(list[1]);
+                float b = Convert.ToSingle(list[2]);
+                float a = list.Count >= 4 ? Convert.ToSingle(list[3]) : 1f;
                 return new Color(r, g, b, a);
             }
 
