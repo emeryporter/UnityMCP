@@ -1006,6 +1006,15 @@ namespace UnityMCP.Editor.Services
                 if (dict.ContainsKey("top"))    lg.padding.top    = Convert.ToInt32(dict["top"]);
                 if (dict.ContainsKey("bottom")) lg.padding.bottom = Convert.ToInt32(dict["bottom"]);
             }
+            else if (value is IList<object> arr)
+            {
+                // Array format: [left, right, top, bottom]
+                int left   = arr.Count > 0 ? Convert.ToInt32(arr[0]) : 0;
+                int right  = arr.Count > 1 ? Convert.ToInt32(arr[1]) : 0;
+                int top    = arr.Count > 2 ? Convert.ToInt32(arr[2]) : 0;
+                int bottom = arr.Count > 3 ? Convert.ToInt32(arr[3]) : 0;
+                lg.padding = new RectOffset(left, right, top, bottom);
+            }
             else
             {
                 // Uniform padding from a single number

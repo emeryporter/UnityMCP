@@ -367,8 +367,7 @@ namespace UnityMCP.Editor.Tools
                 throw MCPException.InvalidParams("'target' parameter is required for modify action.");
             }
 
-            bool searchInactive = setActive == true;
-            GameObject go = FindGameObject(target, searchInactive);
+            GameObject go = FindGameObject(target, searchInactive: true);
             if (go == null)
             {
                 return new
