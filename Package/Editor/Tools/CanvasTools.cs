@@ -55,11 +55,12 @@ namespace UnityMCP.Editor.Tools
             [MCPParam("sort_order", "Sort order for the Canvas")] int? sortOrder = null,
             [MCPParam("scaler_mode", "Canvas scaler mode", Enum = new[] { "constant_pixel_size", "scale_with_screen_size", "constant_physical_size" })] string scalerMode = null,
             [MCPParam("reference_resolution", "Reference resolution as [width, height] array for scale_with_screen_size mode")] object referenceResolution = null,
-            [MCPParam("render_camera", "Instance ID or name/path of the render camera (for camera render mode)")] string renderCamera = null)
+            [MCPParam("render_camera", "Instance ID or name/path of the render camera (for camera render mode)")] string renderCamera = null,
+            [MCPParam("match_width_or_height", "Match width (0) or height (1) for scale_with_screen_size mode", Minimum = 0, Maximum = 1)] float? matchWidthOrHeight = null)
         {
             try
             {
-                return HandleConfigure(target, renderMode, sortOrder, scalerMode, referenceResolution, renderCamera);
+                return HandleConfigure(target, renderMode, sortOrder, scalerMode, referenceResolution, renderCamera, matchWidthOrHeight);
             }
             catch (MCPException) { throw; }
             catch (Exception ex) { throw new MCPException($"Error configuring Canvas: {ex.Message}", ex, MCPErrorCodes.InternalError); }
@@ -115,6 +116,8 @@ namespace UnityMCP.Editor.Tools
 
             // Create Canvas GameObject
             var canvasGO = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(canvasGO, $"Create Canvas '{name}'");
+
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = parsedRenderMode;
 
@@ -141,8 +144,6 @@ namespace UnityMCP.Editor.Tools
 
             // Add GraphicRaycaster
             canvasGO.AddComponent<GraphicRaycaster>();
-
-            Undo.RegisterCreatedObjectUndo(canvasGO, $"Create Canvas '{name}'");
 
             // Create EventSystem if one doesn't already exist
             bool createdEventSystem = false;
@@ -177,7 +178,7 @@ namespace UnityMCP.Editor.Tools
             };
         }
 
-        private static object HandleConfigure(string target, string renderMode, int? sortOrder, string scalerMode, object referenceResolution, string renderCamera)
+        private static object HandleConfigure(string target, string renderMode, int? sortOrder, string scalerMode, object referenceResolution, string renderCamera, float? matchWidthOrHeight)
         {
             if (string.IsNullOrEmpty(target))
             {
@@ -269,6 +270,12 @@ namespace UnityMCP.Editor.Tools
                         scaler.referenceResolution = parsedRes.Value;
                         changes.Add($"reference_resolution={parsedRes.Value}");
                     }
+                }
+
+                if (matchWidthOrHeight.HasValue && scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
+                {
+                    scaler.matchWidthOrHeight = matchWidthOrHeight.Value;
+                    changes.Add($"match_width_or_height={matchWidthOrHeight.Value}");
                 }
             }
 
@@ -389,7 +396,7 @@ namespace UnityMCP.Editor.Tools
                 message = deletedEventSystem
                     ? $"Canvas '{canvasName}' and EventSystem deleted."
                     : $"Canvas '{canvasName}' deleted.",
-                deleted = new { name = canvasName, instanceID = canvasInstanceId },
+                deleted = new { name = canvasName, instance_id = canvasInstanceId },
                 deleted_event_system = deletedEventSystem
             };
         }
