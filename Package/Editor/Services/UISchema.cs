@@ -25,9 +25,9 @@ namespace UnityMCP.Editor.Services
         /// </summary>
         public struct AnchorPreset
         {
-            public Vector2 AnchorMin;
-            public Vector2 AnchorMax;
-            public Vector2 Pivot;
+            public readonly Vector2 AnchorMin;
+            public readonly Vector2 AnchorMax;
+            public readonly Vector2 Pivot;
 
             public AnchorPreset(Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot)
             {
@@ -90,7 +90,11 @@ namespace UnityMCP.Editor.Services
         /// </summary>
         public static List<string> GetAvailableElementTypes()
         {
-            return new List<string>(ElementTypes);
+            var types = new List<string>(ElementTypes);
+#if !UNITY_MCP_TMP
+            types.RemoveAll(t => t.EndsWith("_tmp"));
+#endif
+            return types;
         }
 
         /// <summary>
@@ -115,9 +119,7 @@ namespace UnityMCP.Editor.Services
             switch (elementType)
             {
                 case "text":
-#if UNITY_MCP_TMP
                 case "text_tmp":
-#endif
                     props.UnionWith(new[] { "font_size", "alignment", "font_style", "overflow", "line_spacing" });
                     break;
 
@@ -127,9 +129,7 @@ namespace UnityMCP.Editor.Services
                     break;
 
                 case "button":
-#if UNITY_MCP_TMP
                 case "button_tmp":
-#endif
                     props.UnionWith(new[] { "normal_color", "highlighted_color", "pressed_color", "disabled_color", "fade_duration" });
                     break;
 
@@ -142,16 +142,12 @@ namespace UnityMCP.Editor.Services
                     break;
 
                 case "dropdown":
-#if UNITY_MCP_TMP
                 case "dropdown_tmp":
-#endif
                     props.UnionWith(new[] { "normal_color", "highlighted_color", "pressed_color", "disabled_color", "fade_duration" });
                     break;
 
                 case "input_field":
-#if UNITY_MCP_TMP
                 case "input_field_tmp":
-#endif
                     props.UnionWith(new[] { "font_size", "alignment", "font_style" });
                     break;
 
@@ -183,10 +179,8 @@ namespace UnityMCP.Editor.Services
         /// </summary>
         public static bool ApplyAnchorPreset(RectTransform rt, string preset, bool keepPosition = false)
         {
-            if (rt == null || !AnchorPresets.ContainsKey(preset))
+            if (rt == null || !AnchorPresets.TryGetValue(preset, out var p))
                 return false;
-
-            var p = AnchorPresets[preset];
 
             if (keepPosition)
             {
@@ -1066,6 +1060,7 @@ namespace UnityMCP.Editor.Services
                 return new Color(r, g, b, a);
             }
 
+            Debug.LogWarning($"UISchema: Unrecognized color value '{value}', defaulting to white.");
             return Color.white;
         }
 
@@ -1078,9 +1073,16 @@ namespace UnityMCP.Editor.Services
                 return new Vector2(x, y);
             }
 
-            // Single number → uniform
-            float v = Convert.ToSingle(value);
-            return new Vector2(v, v);
+            try
+            {
+                float v = Convert.ToSingle(value);
+                return new Vector2(v, v);
+            }
+            catch (Exception)
+            {
+                Debug.LogWarning($"UISchema: Cannot parse '{value}' as Vector2, defaulting to zero.");
+                return Vector2.zero;
+            }
         }
 
         private static void SetStretchFull(RectTransform rt)
