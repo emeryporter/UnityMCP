@@ -82,9 +82,7 @@ namespace UnityMCP.Editor.Services
             "input_field",
             "grid_layout", "horizontal_layout", "vertical_layout",
             "spacer",
-#if UNITY_MCP_TMP
             "text_tmp", "button_tmp", "dropdown_tmp", "input_field_tmp",
-#endif
         };
 
         /// <summary>
@@ -452,15 +450,22 @@ namespace UnityMCP.Editor.Services
                     text.fontSize = 14;
                     break;
 
-#if UNITY_MCP_TMP
                 case "text_tmp":
+#if UNITY_MCP_TMP
                     go = CreateUIGameObject(name, parent);
                     var tmpText = go.AddComponent<TextMeshProUGUI>();
                     tmpText.text = name;
                     tmpText.color = Color.black;
                     tmpText.fontSize = 14;
-                    break;
+#else
+                    Debug.LogWarning("TextMeshPro not available. Falling back to legacy Text for 'text_tmp'.");
+                    go = CreateUIGameObject(name, parent);
+                    var fallbackText = go.AddComponent<Text>();
+                    fallbackText.text = name;
+                    fallbackText.color = Color.black;
+                    fallbackText.fontSize = 14;
 #endif
+                    break;
 
                 case "image":
                     go = CreateUIGameObject(name, parent);
@@ -476,11 +481,14 @@ namespace UnityMCP.Editor.Services
                     go = CreateButtonHierarchy(name, parent, useTMP: false);
                     break;
 
-#if UNITY_MCP_TMP
                 case "button_tmp":
+#if UNITY_MCP_TMP
                     go = CreateButtonHierarchy(name, parent, useTMP: true);
-                    break;
+#else
+                    Debug.LogWarning("TextMeshPro not available. Falling back to legacy Button for 'button_tmp'.");
+                    go = CreateButtonHierarchy(name, parent, useTMP: false);
 #endif
+                    break;
 
                 case "toggle":
                     go = CreateToggleHierarchy(name, parent);
@@ -494,11 +502,14 @@ namespace UnityMCP.Editor.Services
                     go = CreateDropdownHierarchy(name, parent, useTMP: false);
                     break;
 
-#if UNITY_MCP_TMP
                 case "dropdown_tmp":
+#if UNITY_MCP_TMP
                     go = CreateDropdownHierarchy(name, parent, useTMP: true);
-                    break;
+#else
+                    Debug.LogWarning("TextMeshPro not available. Falling back to legacy Dropdown for 'dropdown_tmp'.");
+                    go = CreateDropdownHierarchy(name, parent, useTMP: false);
 #endif
+                    break;
 
                 case "scrollview":
                     go = CreateScrollViewHierarchy(name, parent);
@@ -508,11 +519,14 @@ namespace UnityMCP.Editor.Services
                     go = CreateInputFieldHierarchy(name, parent, useTMP: false);
                     break;
 
-#if UNITY_MCP_TMP
                 case "input_field_tmp":
+#if UNITY_MCP_TMP
                     go = CreateInputFieldHierarchy(name, parent, useTMP: true);
-                    break;
+#else
+                    Debug.LogWarning("TextMeshPro not available. Falling back to legacy InputField for 'input_field_tmp'.");
+                    go = CreateInputFieldHierarchy(name, parent, useTMP: false);
 #endif
+                    break;
 
                 case "grid_layout":
                     go = CreateUIGameObject(name, parent);
@@ -559,6 +573,7 @@ namespace UnityMCP.Editor.Services
             var go = new GameObject(name);
             go.AddComponent<RectTransform>();
             go.transform.SetParent(parent, false);
+            Undo.RegisterCreatedObjectUndo(go, $"Create UI child '{name}'");
             return go;
         }
 
