@@ -313,7 +313,7 @@ namespace UnityMCP.Editor.Utilities
         /// Returns null for null references, or a reference dictionary for non-null objects.
         /// The isObjectReference flag is added at the property level by the inspect handler.
         /// </summary>
-        public static object SerializeObjectReference(SerializedProperty property)
+        private static object SerializeObjectReference(SerializedProperty property)
         {
             var objectRef = property.objectReferenceValue;
             if (objectRef == null)
@@ -346,7 +346,7 @@ namespace UnityMCP.Editor.Utilities
         /// <summary>
         /// Serializes a generic (nested) property by iterating its children.
         /// </summary>
-        public static object SerializeGenericProperty(SerializedProperty property, int depth, int maxDepth)
+        private static object SerializeGenericProperty(SerializedProperty property, int depth, int maxDepth)
         {
             // Handle arrays specially
             if (property.isArray)
@@ -389,7 +389,7 @@ namespace UnityMCP.Editor.Utilities
         /// <summary>
         /// Serializes an array property.
         /// </summary>
-        public static object SerializeArrayProperty(SerializedProperty property, int depth, int maxDepth)
+        private static object SerializeArrayProperty(SerializedProperty property, int depth, int maxDepth)
         {
             int arraySize = property.arraySize;
 
@@ -423,7 +423,7 @@ namespace UnityMCP.Editor.Utilities
         /// <summary>
         /// Serializes a managed reference property (Unity 2019.3+).
         /// </summary>
-        public static object SerializeManagedReference(SerializedProperty property, int depth, int maxDepth)
+        private static object SerializeManagedReference(SerializedProperty property, int depth, int maxDepth)
         {
             // Get the managed reference type info
             string typeName = property.managedReferenceFullTypename;
