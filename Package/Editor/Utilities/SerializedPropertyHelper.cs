@@ -354,6 +354,12 @@ namespace UnityMCP.Editor.Utilities
                 return SerializeArrayProperty(property, depth, maxDepth);
             }
 
+            // Handle fixed-size buffers (e.g. m_LayerCollisionMatrix is uint[32])
+            if (property.isFixedBuffer)
+            {
+                return SerializeFixedBufferProperty(property, depth, maxDepth);
+            }
+
             // For non-array generics (structs/nested objects), iterate children
             var result = new Dictionary<string, object>
             {
@@ -408,6 +414,39 @@ namespace UnityMCP.Editor.Utilities
             {
                 { "$isArray", true },
                 { "length", arraySize },
+                { "elements", elements }
+            };
+
+            if (truncated)
+            {
+                result["$truncated"] = true;
+                result["$truncatedAt"] = MaxSerializedArrayElements;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Serializes a fixed-size buffer property (e.g. uint[32] layer collision matrix).
+        /// Uses GetFixedBufferElementAtIndex to read each element.
+        /// </summary>
+        private static object SerializeFixedBufferProperty(SerializedProperty property, int depth, int maxDepth)
+        {
+            int bufferSize = property.fixedBufferSize;
+            bool truncated = bufferSize > MaxSerializedArrayElements;
+            int elementsToSerialize = truncated ? MaxSerializedArrayElements : bufferSize;
+
+            var elements = new List<object>();
+            for (int i = 0; i < elementsToSerialize; i++)
+            {
+                var element = property.GetFixedBufferElementAtIndex(i);
+                elements.Add(SerializePropertyValue(element, depth + 1, maxDepth));
+            }
+
+            var result = new Dictionary<string, object>
+            {
+                { "$isFixedBuffer", true },
+                { "length", bufferSize },
                 { "elements", elements }
             };
 

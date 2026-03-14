@@ -785,6 +785,21 @@ namespace UnityMCP.Editor.Core
                 }
             }
 
+            // Handle dictionary value types (emit additionalProperties for object schemas from dictionaries)
+            if (metadata.JsonType == "object" && metadata.ParameterInfo.ParameterType.IsGenericType
+                && typeof(System.Collections.IDictionary).IsAssignableFrom(metadata.ParameterInfo.ParameterType))
+            {
+                var genericArgs = metadata.ParameterInfo.ParameterType.GetGenericArguments();
+                if (genericArgs.Length == 2)
+                {
+                    var valueType = genericArgs[1];
+                    // For object values, use empty schema (any type); for typed values, specify the type
+                    schema.additionalProperties = valueType == typeof(object)
+                        ? new PropertySchema()
+                        : new PropertySchema { type = GetJsonSchemaType(valueType) };
+                }
+            }
+
             return schema;
         }
 
@@ -928,6 +943,10 @@ namespace UnityMCP.Editor.Core
             if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte)) return "integer";
             if (type == typeof(float) || type == typeof(double) || type == typeof(decimal)) return "number";
             if (type == typeof(bool)) return "boolean";
+
+            // Check for dictionary types before IEnumerable (dictionaries implement IEnumerable)
+            if (type.IsGenericType && typeof(System.Collections.IDictionary).IsAssignableFrom(type)) return "object";
+
             if (type.IsArray || (type.IsGenericType && typeof(System.Collections.IEnumerable).IsAssignableFrom(type))) return "array";
 
             return "object";

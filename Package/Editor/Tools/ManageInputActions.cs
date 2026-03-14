@@ -482,8 +482,9 @@ namespace UnityMCP.Editor.Tools
                 CreateFolderRecursive(directory);
             }
 
-            AssetDatabase.CreateAsset(asset, path);
-            AssetDatabase.SaveAssets();
+            // .inputactions files must be JSON text, not Unity binary assets
+            System.IO.File.WriteAllText(path, asset.ToJson());
+            AssetDatabase.ImportAsset(path);
 
             string createdGuid = AssetDatabase.AssetPathToGUID(path);
 
@@ -1005,8 +1006,9 @@ namespace UnityMCP.Editor.Tools
 
         private static void SaveAsset(InputActionAsset asset)
         {
-            EditorUtility.SetDirty(asset);
-            AssetDatabase.SaveAssets();
+            string assetPath = AssetDatabase.GetAssetPath(asset);
+            System.IO.File.WriteAllText(assetPath, asset.ToJson());
+            AssetDatabase.ImportAsset(assetPath);
         }
 
         private static object SerializeAssetSummary(InputActionAsset asset, string assetPath, string guid)

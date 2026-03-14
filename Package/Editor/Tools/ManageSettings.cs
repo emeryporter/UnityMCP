@@ -660,8 +660,9 @@ namespace UnityMCP.Editor.Tools
             bool hasFilter = !string.IsNullOrEmpty(filter);
             int matchCount = 0;
 
-            // Enter the first property
-            if (!iterator.NextVisible(true))
+            // Enter the first property — use Next instead of NextVisible so that
+            // fixed-size buffer properties (e.g. m_LayerCollisionMatrix) are included.
+            if (!iterator.Next(true))
                 return;
 
             do
@@ -685,7 +686,7 @@ namespace UnityMCP.Editor.Tools
                 onMatch(propertyPath, iterator.type, iterator.Copy());
                 matchCount++;
             }
-            while (iterator.NextVisible(false));
+            while (iterator.Next(false));
         }
 
         #endregion

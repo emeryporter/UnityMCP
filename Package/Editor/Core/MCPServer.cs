@@ -315,6 +315,11 @@ ASYNC JOBS: Build, test, and profiler operations return a job_id. Poll the same 
                 schemaObject["items"] = SerializePropertySchema(propertySchema.items);
             }
 
+            if (propertySchema.additionalProperties != null)
+            {
+                schemaObject["additionalProperties"] = SerializePropertySchema(propertySchema.additionalProperties);
+            }
+
             if (propertySchema.@default != null)
             {
                 schemaObject["default"] = JToken.FromObject(propertySchema.@default);
