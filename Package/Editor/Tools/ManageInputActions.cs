@@ -462,19 +462,6 @@ namespace UnityMCP.Editor.Tools
             if (AssetDatabase.LoadAssetAtPath<InputActionAsset>(path) != null)
                 throw MCPException.InvalidParams($"An asset already exists at '{path}'.");
 
-            var asset = ScriptableObject.CreateInstance<InputActionAsset>();
-
-            if (maps != null)
-            {
-                foreach (var mapName in maps)
-                {
-                    if (!string.IsNullOrEmpty(mapName))
-                    {
-                        asset.AddActionMap(mapName);
-                    }
-                }
-            }
-
             // Ensure parent directory exists
             string directory = System.IO.Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory) && !AssetDatabase.IsValidFolder(directory))
@@ -482,9 +469,36 @@ namespace UnityMCP.Editor.Tools
                 CreateFolderRecursive(directory);
             }
 
-            // .inputactions files must be JSON text, not Unity binary assets
-            System.IO.File.WriteAllText(path, asset.ToJson());
+            // Write minimal valid JSON first, then import so AssetDatabase properly
+            // initializes the asset. ScriptableObject.CreateInstance<InputActionAsset>()
+            // leaves internal collections null, causing ToJson() to throw.
+            string assetName = System.IO.Path.GetFileNameWithoutExtension(path);
+            string emptyAssetJson = $"{{\"name\":\"{assetName}\",\"maps\":[],\"controlSchemes\":[]}}";
+            System.IO.File.WriteAllText(path, emptyAssetJson);
             AssetDatabase.ImportAsset(path);
+
+            var asset = AssetDatabase.LoadAssetAtPath<InputActionAsset>(path);
+            if (asset == null)
+                throw new MCPException($"Failed to load newly created asset at '{path}'.", MCPErrorCodes.InternalError);
+
+            if (maps != null)
+            {
+                bool mapsAdded = false;
+                foreach (var mapName in maps)
+                {
+                    if (!string.IsNullOrEmpty(mapName))
+                    {
+                        asset.AddActionMap(mapName);
+                        mapsAdded = true;
+                    }
+                }
+
+                if (mapsAdded)
+                {
+                    System.IO.File.WriteAllText(path, asset.ToJson());
+                    AssetDatabase.ImportAsset(path);
+                }
+            }
 
             string createdGuid = AssetDatabase.AssetPathToGUID(path);
 
