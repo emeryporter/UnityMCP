@@ -780,7 +780,7 @@ namespace UnityMCP.Editor.Tools
             var action = FindAction(map, actionName);
 
             Undo.RecordObject(asset, $"Remove Action '{actionName}'");
-            map.RemoveAction(action);
+            asset.RemoveAction($"{mapName}/{actionName}");
             SaveAsset(asset);
 
             return new
@@ -858,12 +858,13 @@ namespace UnityMCP.Editor.Tools
 
             Undo.RecordObject(asset, $"Add Composite Binding to '{actionName}'");
 
+            int compositeBindingIndex = action.bindings.Count;
             var compositeSyntax = action.AddCompositeBinding(compositeType);
 
             if (!string.IsNullOrEmpty(interactions))
-                compositeSyntax.WithInteractions(interactions);
+                action.ChangeBinding(compositeBindingIndex).WithInteractions(interactions);
             if (!string.IsNullOrEmpty(processors))
-                compositeSyntax.WithProcessors(processors);
+                action.ChangeBinding(compositeBindingIndex).WithProcessors(processors);
 
             foreach (var part in parts)
             {

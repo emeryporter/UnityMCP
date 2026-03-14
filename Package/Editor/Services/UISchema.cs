@@ -289,8 +289,11 @@ namespace UnityMCP.Editor.Services
 
                 // ── Text / TMP text ──
                 case "font_size":
-                    ApplyTextProperty(go, elementType, (text) => text.fontSize = Convert.ToInt32(value),
-                        tmpAction: (tmp) => tmp.fontSize = Convert.ToSingle(value));
+                    ApplyTextProperty(go, elementType, (text) => text.fontSize = Convert.ToInt32(value)
+#if UNITY_MCP_TMP
+                        , tmpAction: (tmp) => tmp.fontSize = Convert.ToSingle(value)
+#endif
+                    );
                     break;
 
                 case "alignment":
@@ -306,8 +309,11 @@ namespace UnityMCP.Editor.Services
                     break;
 
                 case "line_spacing":
-                    ApplyTextProperty(go, elementType, (text) => text.lineSpacing = Convert.ToSingle(value),
-                        tmpAction: (tmp) => tmp.lineSpacing = Convert.ToSingle(value));
+                    ApplyTextProperty(go, elementType, (text) => text.lineSpacing = Convert.ToSingle(value)
+#if UNITY_MCP_TMP
+                        , tmpAction: (tmp) => tmp.lineSpacing = Convert.ToSingle(value)
+#endif
+                    );
                     break;
 
                 // ── Image ──
