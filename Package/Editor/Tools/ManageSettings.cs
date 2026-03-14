@@ -550,7 +550,9 @@ namespace UnityMCP.Editor.Tools
                         return new { success = true, message = $"EditorPrefs '{key}' set to {boolValue}.", key, type = normalizedType, value = boolValue };
 
                     case "string":
-                        string stringValue = value?.ToString() ?? "";
+                        string stringValue = value is Newtonsoft.Json.Linq.JValue jv
+                            ? jv.Value?.ToString() ?? ""
+                            : value?.ToString() ?? "";
                         EditorPrefs.SetString(key, stringValue);
                         return new { success = true, message = $"EditorPrefs '{key}' set.", key, type = normalizedType, value = stringValue };
 

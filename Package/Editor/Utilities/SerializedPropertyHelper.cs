@@ -527,7 +527,9 @@ namespace UnityMCP.Editor.Utilities
                         return true;
 
                     case SerializedPropertyType.String:
-                        property.stringValue = value?.ToString() ?? "";
+                        property.stringValue = value is Newtonsoft.Json.Linq.JValue jv
+                            ? jv.Value?.ToString() ?? ""
+                            : value?.ToString() ?? "";
                         return true;
 
                     case SerializedPropertyType.Enum:
