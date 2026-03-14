@@ -1,7 +1,9 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityMCP.Editor.Core;
 using UnityMCP.Editor.Utilities;
 
@@ -10,14 +12,15 @@ namespace UnityMCP.Editor.Tools
     /// <summary>
     /// Captures Game View or Scene View screenshots for AI vision analysis.
     /// Returns base64-encoded image data by default, or saves to disk via output_path.
+    /// Supports target framing and camera angle presets for Scene View.
     /// </summary>
     public static class VisionCapture
     {
         [MCPTool("vision_capture",
             "Capture Game/Scene View screenshot as base64 image for AI vision analysis. " +
             "Returns JPEG by default (compact). Use output_path to save to disk instead. " +
-            "For file-based screenshots with target framing and camera angles, use scene_screenshot.",
-            Category = "Scene", ReadOnlyHint = true, IdempotentHint = true)]
+            "Use target/angle to frame a specific object from a preset camera angle (Scene View).",
+            Category = "Scene")]
         public static object Capture(
             [MCPParam("view", "Which view to capture",
                 Enum = new[] { "game", "scene" })] string view = "game",
@@ -27,12 +30,16 @@ namespace UnityMCP.Editor.Tools
                 Enum = new[] { "jpeg", "png" })] string format = "jpeg",
             [MCPParam("quality", "JPEG quality 1-100. Ignored for PNG.",
                 Minimum = 1, Maximum = 100)] int quality = 75,
-            [MCPParam("output_path", "Save to this path instead of returning base64. Relative paths resolve from project root.")] string outputPath = null)
+            [MCPParam("output_path", "Save to this path instead of returning base64. Relative paths resolve from project root.")] string outputPath = null,
+            [MCPParam("target", "GameObject name, path, or instance ID to frame in the shot (auto-positions Scene View camera)")] string target = null,
+            [MCPParam("angle", "Camera angle preset for Scene View capture",
+                Enum = new[] { "current", "top", "front", "right", "isometric" })] string angle = "current")
         {
             try
             {
                 string resolvedView = (view ?? "game").ToLowerInvariant();
                 string resolvedFormat = (format ?? "jpeg").ToLowerInvariant();
+                string resolvedAngle = (angle ?? "current").ToLowerInvariant();
                 int resolvedWidth = Mathf.Clamp(width, 64, 3840);
                 int resolvedQuality = Mathf.Clamp(quality, 1, 100);
 
@@ -42,11 +49,24 @@ namespace UnityMCP.Editor.Tools
                 if (resolvedFormat != "jpeg" && resolvedFormat != "png")
                     return new { success = false, error = $"Invalid format '{format}'. Must be 'jpeg' or 'png'." };
 
+                string[] validAngles = { "current", "top", "front", "right", "isometric" };
+                if (Array.IndexOf(validAngles, resolvedAngle) < 0)
+                    return new { success = false, error = $"Invalid angle '{angle}'. Must be one of: current, top, front, right, isometric." };
+
+                // If target or non-current angle specified, set up Scene View camera
+                bool needsSceneViewSetup = !string.IsNullOrEmpty(target) || resolvedAngle != "current";
+                if (needsSceneViewSetup)
+                {
+                    var setupResult = SetupSceneViewCamera(target, resolvedAngle);
+                    if (setupResult != null)
+                        return setupResult; // returns error object on failure
+                }
+
                 byte[] imageBytes;
                 int capturedWidth;
                 int capturedHeight;
 
-                if (resolvedView == "scene")
+                if (resolvedView == "scene" || needsSceneViewSetup)
                 {
                     var result = CaptureSceneView(resolvedWidth, resolvedFormat, resolvedQuality);
                     imageBytes = result.bytes;
@@ -55,6 +75,7 @@ namespace UnityMCP.Editor.Tools
                 }
                 else
                 {
+                    ManageScene.EnsureGameView();
                     var result = CaptureGameView(resolvedWidth, resolvedFormat, resolvedQuality);
                     imageBytes = result.bytes;
                     capturedWidth = result.width;
@@ -87,7 +108,7 @@ namespace UnityMCP.Editor.Tools
                 return new
                 {
                     success = true,
-                    view = resolvedView,
+                    view = needsSceneViewSetup ? "scene" : resolvedView,
                     width = capturedWidth,
                     height = capturedHeight,
                     format = resolvedFormat,
@@ -99,6 +120,59 @@ namespace UnityMCP.Editor.Tools
             catch (Exception exception)
             {
                 return new { success = false, error = $"Vision capture failed: {exception.Message}" };
+            }
+        }
+
+        /// <summary>
+        /// Positions the Scene View camera to frame a target and/or apply an angle preset.
+        /// Returns null on success, or an error object on failure.
+        /// </summary>
+        private static object SetupSceneViewCamera(string target, string resolvedAngle)
+        {
+            SceneView sceneView = SceneView.lastActiveSceneView;
+            if (sceneView == null)
+                return new { success = false, error = "No active Scene View found. Open a Scene View window first." };
+
+            if (!string.IsNullOrEmpty(target))
+            {
+                Scene activeScene = EditorSceneManager.GetActiveScene();
+                GameObject targetGameObject = ManageScene.ResolveGameObject(target, activeScene);
+                if (targetGameObject == null)
+                    return new { success = false, error = $"Target GameObject '{target}' not found." };
+
+                if (resolvedAngle != "current")
+                {
+                    Quaternion angleRotation = GetAngleRotation(resolvedAngle);
+                    sceneView.LookAt(targetGameObject.transform.position, angleRotation);
+                }
+
+                Selection.activeGameObject = targetGameObject;
+                sceneView.FrameSelected();
+            }
+            else if (resolvedAngle != "current")
+            {
+                Quaternion angleRotation = GetAngleRotation(resolvedAngle);
+                sceneView.LookAt(sceneView.pivot, angleRotation);
+            }
+
+            sceneView.Repaint();
+            return null; // success
+        }
+
+        private static Quaternion GetAngleRotation(string angle)
+        {
+            switch (angle)
+            {
+                case "top":
+                    return Quaternion.Euler(90, 0, 0);
+                case "front":
+                    return Quaternion.Euler(0, 0, 0);
+                case "right":
+                    return Quaternion.Euler(0, -90, 0);
+                case "isometric":
+                    return Quaternion.Euler(30, -45, 0);
+                default:
+                    return Quaternion.identity;
             }
         }
 
