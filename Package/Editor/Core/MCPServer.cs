@@ -239,6 +239,8 @@ ASYNC JOBS: Build, test, and profiler operations return a job_id. Poll the same 
                         annotationsObject["idempotentHint"] = tool.annotations.idempotentHint.Value;
                     if (tool.annotations.openWorldHint.HasValue)
                         annotationsObject["openWorldHint"] = tool.annotations.openWorldHint.Value;
+                    if (tool.annotations.batchableHint.HasValue)
+                        annotationsObject["batchableHint"] = tool.annotations.batchableHint.Value;
                     if (tool.annotations.title != null)
                         annotationsObject["title"] = tool.annotations.title;
                     if (annotationsObject.Count > 0)

@@ -29,6 +29,11 @@ namespace UnityMCP.Editor.UI.Tabs
         private readonly Label _portHint;
         private readonly Toggle _verboseToggle;
 
+        // Batch execution elements
+        private IntegerField _batchMaxSizeField;
+        private IntegerField _batchMaxConsecutiveErrorsField;
+        private IntegerField _batchMaxErrorPercentField;
+
         // Remote access elements (assigned in BuildRemoteAccessContent, not constructor)
         private Foldout _remoteAccessFoldout;
         private VisualElement _remoteAccessContent;
@@ -139,6 +144,45 @@ namespace UnityMCP.Editor.UI.Tabs
             });
             _verboseToggle.style.marginTop = 4;
             scrollView.Add(_verboseToggle);
+
+            scrollView.Add(CreateSpacer(12));
+
+            // --- Batch Execution Section ---
+            Foldout batchFoldout = new Foldout { text = "Batch Execution", value = false };
+
+            _batchMaxSizeField = new IntegerField("Max Batch Size");
+            _batchMaxSizeField.value = MCPProxy.BatchMaxSize;
+            _batchMaxSizeField.RegisterValueChangedCallback(evt =>
+            {
+                int clamped = Mathf.Clamp(evt.newValue, 1, 100);
+                if (clamped != evt.newValue) _batchMaxSizeField.SetValueWithoutNotify(clamped);
+                MCPProxy.BatchMaxSize = clamped;
+            });
+            batchFoldout.Add(_batchMaxSizeField);
+
+            _batchMaxConsecutiveErrorsField = new IntegerField("Max Consecutive Errors");
+            _batchMaxConsecutiveErrorsField.value = MCPProxy.BatchMaxConsecutiveErrors;
+            _batchMaxConsecutiveErrorsField.RegisterValueChangedCallback(evt =>
+            {
+                int clamped = Mathf.Clamp(evt.newValue, 1, 20);
+                if (clamped != evt.newValue) _batchMaxConsecutiveErrorsField.SetValueWithoutNotify(clamped);
+                MCPProxy.BatchMaxConsecutiveErrors = clamped;
+            });
+            _batchMaxConsecutiveErrorsField.style.marginTop = 4;
+            batchFoldout.Add(_batchMaxConsecutiveErrorsField);
+
+            _batchMaxErrorPercentField = new IntegerField("Max Error %");
+            _batchMaxErrorPercentField.value = MCPProxy.BatchMaxErrorPercent;
+            _batchMaxErrorPercentField.RegisterValueChangedCallback(evt =>
+            {
+                int clamped = Mathf.Clamp(evt.newValue, 1, 100);
+                if (clamped != evt.newValue) _batchMaxErrorPercentField.SetValueWithoutNotify(clamped);
+                MCPProxy.BatchMaxErrorPercent = clamped;
+            });
+            _batchMaxErrorPercentField.style.marginTop = 4;
+            batchFoldout.Add(_batchMaxErrorPercentField);
+
+            scrollView.Add(batchFoldout);
 
             scrollView.Add(CreateSpacer(12));
 

@@ -404,6 +404,7 @@ namespace UnityMCP.Editor.Core
         public bool? destructiveHint;
         public bool? idempotentHint;
         public bool? openWorldHint;
+        public bool? batchableHint;
         public string title;
     }
 
