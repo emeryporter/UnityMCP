@@ -240,6 +240,20 @@ namespace UnityMCP.Editor.Core
         }
 
         /// <summary>
+        /// Gets the tool info for a registered tool by name.
+        /// Returns null if not found.
+        /// </summary>
+        internal static IToolInfo GetToolInfo(string name)
+        {
+            EnsureInitialized();
+            lock (_lock)
+            {
+                _tools.TryGetValue(name, out var toolInfo);
+                return toolInfo;
+            }
+        }
+
+        /// <summary>
         /// Invokes a tool by name with the given arguments.
         /// </summary>
         public static object Invoke(string name, Dictionary<string, object> arguments)
@@ -321,6 +335,8 @@ namespace UnityMCP.Editor.Core
         string Name { get; }
         string Description { get; }
         string Category { get; }
+        bool IsBatchable { get; }
+        bool IsDestructive { get; }
         ToolDefinition ToDefinition();
         object Invoke(Dictionary<string, object> arguments);
     }
@@ -338,6 +354,8 @@ namespace UnityMCP.Editor.Core
         public string Name => _attribute.Name;
         public string Description => _attribute.Description;
         public string Category => _attribute.Category;
+        public bool IsBatchable => _attribute.BatchableHint;
+        public bool IsDestructive => _attribute.DestructiveHint;
 
         public MethodToolInfo(MCPToolAttribute attribute, MethodInfo method)
         {
@@ -387,7 +405,7 @@ namespace UnityMCP.Editor.Core
             // Only include annotations if at least one hint was explicitly set
             bool hasAnnotations = _attribute.ReadOnlyHint || _attribute.DestructiveHint ||
                                   _attribute.IdempotentHint || _attribute.OpenWorldHint ||
-                                  _attribute.Title != null;
+                                  _attribute.BatchableHint || _attribute.Title != null;
             if (hasAnnotations)
             {
                 definition.annotations = new ToolAnnotations();
@@ -395,6 +413,7 @@ namespace UnityMCP.Editor.Core
                 if (_attribute.DestructiveHint) definition.annotations.destructiveHint = true;
                 if (_attribute.IdempotentHint) definition.annotations.idempotentHint = true;
                 if (_attribute.OpenWorldHint) definition.annotations.openWorldHint = true;
+                if (_attribute.BatchableHint) definition.annotations.batchableHint = true;
                 if (_attribute.Title != null) definition.annotations.title = _attribute.Title;
             }
 
@@ -515,6 +534,8 @@ namespace UnityMCP.Editor.Core
         public string Name => _attribute.Name;
         public string Description => _attribute.Description;
         public string Category => _attribute.Category;
+        public bool IsBatchable => _attribute.BatchableHint;
+        public bool IsDestructive => _attribute.DestructiveHint || _actions.Values.Any(a => a.Attribute.DestructiveHint);
 
         public ActionToolInfo(MCPToolAttribute attribute, Dictionary<string, ActionInfo> actions)
         {
@@ -624,7 +645,7 @@ namespace UnityMCP.Editor.Core
             if (_attribute.OpenWorldHint) anyOpenWorld = true;
 
             bool hasAnnotations = anyDestructive || allReadOnly || allIdempotent || anyOpenWorld ||
-                                  _attribute.Title != null;
+                                  _attribute.BatchableHint || _attribute.Title != null;
             if (hasAnnotations)
             {
                 definition.annotations = new ToolAnnotations();
@@ -632,6 +653,7 @@ namespace UnityMCP.Editor.Core
                 if (allReadOnly) definition.annotations.readOnlyHint = true;
                 if (allIdempotent) definition.annotations.idempotentHint = true;
                 if (anyOpenWorld) definition.annotations.openWorldHint = true;
+                if (_attribute.BatchableHint) definition.annotations.batchableHint = true;
                 if (_attribute.Title != null) definition.annotations.title = _attribute.Title;
             }
 

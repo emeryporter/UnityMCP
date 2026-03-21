@@ -346,7 +346,7 @@ namespace UnityMCP.Editor.Tools
         /// <summary>
         /// Gets information about the currently active scene.
         /// </summary>
-        [MCPTool("get_active_scene", "Gets information about the currently active scene", Category = "Scene", ReadOnlyHint = true)]
+        [MCPTool("get_active_scene", "Gets information about the currently active scene", Category = "Scene", ReadOnlyHint = true, BatchableHint = true)]
         public static object GetActiveScene()
         {
             try
@@ -404,7 +404,7 @@ namespace UnityMCP.Editor.Tools
         /// <summary>
         /// Gets the hierarchy of GameObjects in the current scene.
         /// </summary>
-        [MCPTool("get_scene_hierarchy", "Gets the hierarchy of GameObjects in the current scene", Category = "Scene", ReadOnlyHint = true)]
+        [MCPTool("get_scene_hierarchy", "Gets the hierarchy of GameObjects in the current scene", Category = "Scene", ReadOnlyHint = true, BatchableHint = true)]
         public static object GetHierarchy(
             [MCPParam("parent", "Instance ID or name of parent GameObject to list children of (null for roots)")] string parent = null,
             [MCPParam("max_depth", "Maximum depth to traverse (default: 1, just immediate children)", Minimum = 1)] int maxDepth = 1,

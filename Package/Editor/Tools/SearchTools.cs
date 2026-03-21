@@ -9,7 +9,7 @@ namespace UnityMCP.Editor.Tools
 {
     public static class SearchTools
     {
-        [MCPTool("search_tools", "Search available tools by name, description, or category. Call with no args for a category overview. For workflow guidance and best practices, use get_unity_guide instead.", Category = "Editor", ReadOnlyHint = true)]
+        [MCPTool("search_tools", "Search available tools by name, description, or category. Call with no args for a category overview. For workflow guidance and best practices, use get_unity_guide instead.", Category = "Editor", ReadOnlyHint = true, BatchableHint = true)]
         public static object SearchAvailableTools(
             [MCPParam("query", "Search names and descriptions")] string query = null,
             [MCPParam("category", "Filter by category")] string category = null)
@@ -94,6 +94,8 @@ namespace UnityMCP.Editor.Tools
                         annotationsDict["idempotentHint"] = tool.annotations.idempotentHint.Value;
                     if (tool.annotations.openWorldHint.HasValue)
                         annotationsDict["openWorldHint"] = tool.annotations.openWorldHint.Value;
+                    if (tool.annotations.batchableHint.HasValue)
+                        annotationsDict["batchableHint"] = tool.annotations.batchableHint.Value;
                     if (tool.annotations.title != null)
                         annotationsDict["title"] = tool.annotations.title;
 

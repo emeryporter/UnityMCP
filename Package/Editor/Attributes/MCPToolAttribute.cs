@@ -44,6 +44,12 @@ namespace UnityMCP.Editor
         public bool OpenWorldHint { get; set; } = false;
 
         /// <summary>
+        /// If true, the tool can be used with batch_execute for repeated invocations.
+        /// Destructive tools are never batchable regardless of this setting.
+        /// </summary>
+        public bool BatchableHint { get; set; } = false;
+
+        /// <summary>
         /// An optional human-readable display title for the tool.
         /// </summary>
         public string Title { get; set; } = null;
