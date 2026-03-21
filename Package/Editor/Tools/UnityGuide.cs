@@ -43,7 +43,7 @@ namespace UnityMCP.Editor.Tools
 ## Key Tools
 - `create_scene` / `load_scene` / `save_scene` - Scene lifecycle management.
 - `get_scene_hierarchy` - Inspect full object tree (use max_depth to limit output).
-- `capture_screenshot` - Capture the current Game or Scene view for visual verification.",
+- `vision_capture` - Capture the current Game or Scene view for visual verification.",
 
             ["gameobjects"] = @"# GameObject Management Guide
 
@@ -178,7 +178,7 @@ namespace UnityMCP.Editor.Tools
 1. Use `get_scene_hierarchy` to verify scene structure is correct.
 2. Use `manage_component` action='inspect' to inspect component state and field values.
 3. Use `find_gameobject` to verify objects exist with expected names/tags/components.
-4. Use `capture_screenshot` to visually verify the scene state.
+4. Use `vision_capture` to visually verify the scene state.
 5. Use `manage_selection` action='set' then action='get' to focus on specific objects.
 
 ## Profiler Workflow (Performance)
@@ -197,7 +197,7 @@ namespace UnityMCP.Editor.Tools
 ## Key Tools
 - `read_console` - Read and filter Unity Console log entries.
 - `run_profiler` action='start' / action='get_job' - Performance profiling (async).
-- `capture_screenshot` - Visual verification of scene state.
+- `vision_capture` - Visual verification of scene state.
 - `get_scene_hierarchy` - Structural verification of scene objects.",
 
             ["building"] = @"# Build Pipeline Guide
@@ -304,7 +304,7 @@ All long-running operations (build, test, profiler) follow the same pattern:
 3. `manage_material` action='set_property' / action='set_color' -> set color, texture, and value properties.
 4. `find_gameobject` -> find target objects.
 5. `manage_material` action='assign_to_renderer' -> assign material to each object's renderer.
-6. `capture_screenshot` -> visually verify the result.
+6. `vision_capture` -> visually verify the result.
 
 ## Iterative Script Development
 1. `manage_script` action='create' -> create initial script.
@@ -327,7 +327,7 @@ All long-running operations (build, test, profiler) follow the same pattern:
 ## Tool Chaining Tips
 - Always check `read_console` after `refresh_unity` to catch compilation errors.
 - Use `get_scene_hierarchy` before and after bulk operations to verify changes.
-- Use `capture_screenshot` after visual changes to confirm the result.
+- Use `vision_capture` after visual changes to confirm the result.
 - Save frequently with `save_scene` to avoid losing work.
 - Use `find_gameobject` to locate objects by name/tag instead of hardcoding instance IDs.
 - For async operations (build, test, profiler), always use the poll pattern: start -> get_job -> check status.
@@ -349,6 +349,190 @@ When writing new tools that modify **project assets** (materials, scripts, prefa
 - **Do NOT** call Track() on scene GameObjects or components — they have no asset path and the call is a no-op. Scene changes are captured by the scene file copy.
 - Import `using UnityMCP.Editor.Services;` to access CheckpointManager.",
 
+            ["canvas_ui"] = @"# Canvas UI Building Guide
+
+## AI Workflow (Recommended Loop)
+1. `build_ui` action='read_schema' → get the element format reference (types, properties, anchors).
+2. Design a UI tree JSON from the user's description using the schema.
+3. `manage_checkpoint` action='save' → create a safety checkpoint before building.
+4. `build_ui` action='from_tree' with the tree JSON → complete UI created in one call.
+5. `vision_capture` → see the result in Game View.
+6. `manage_ui_element` action='modify' → tweak individual elements (position, style, text).
+7. `vision_capture` → verify the adjustment.
+8. Repeat steps 6-7 until satisfied.
+
+## Quick-Start with Templates
+Use `build_ui` action='apply_template' with a template_name to scaffold common layouts instantly:
+- **inventory_grid** - Grid of item slots with optional header.
+- **dialog_box** - NPC dialog panel with speaker name, body text, and choice buttons.
+- **hud_bars** - Health/mana/stamina bars anchored to screen edges.
+- **settings_menu** - Tabbed settings panel with sliders, toggles, and dropdowns.
+- **list_view** - Scrollable vertical list with item prefab.
+- **tab_panel** - Horizontal tab bar with switchable content pages.
+
+## Anchor Preset Reference
+Anchor presets control how an element is positioned and stretched relative to its parent:
+
+| Row          | Left          | Center          | Right          | Stretch          |
+|--------------|---------------|-----------------|----------------|------------------|
+| **Top**      | top_left      | top_center      | top_right      | top_stretch      |
+| **Middle**   | middle_left   | middle_center   | middle_right   | middle_stretch   |
+| **Bottom**   | bottom_left   | bottom_center   | bottom_right   | bottom_stretch   |
+| **Stretch**  | stretch_left  | stretch_center  | stretch_right  | stretch_full     |
+
+- Use `_stretch` presets when the element should resize with its parent.
+- `stretch_full` fills the entire parent (good for backgrounds and overlays).
+- `middle_center` is the default; element stays centered with fixed size.
+
+## Common Style Properties Cheat Sheet
+
+### Text (TextMeshProUGUI)
+- **font_size** (float) - Size in points, e.g. 24.
+- **alignment** (string) - 'TopLeft', 'Center', 'BottomRight', etc.
+- **font_style** (string) - 'Normal', 'Bold', 'Italic', 'BoldAndItalic'.
+
+### Image
+- **sprite_path** (string) - Asset path to a Sprite, e.g. 'Assets/Sprites/icon.png'.
+- **image_type** (string) - 'Simple', 'Sliced', 'Tiled', 'Filled'.
+- **preserve_aspect** (bool) - Keep the sprite's aspect ratio.
+
+### Button / Selectable Colors
+- **normal_color** (array) - [r, g, b, a] idle state color.
+- **highlighted_color** (array) - Hover state color.
+- **pressed_color** (array) - Click state color.
+- **disabled_color** (array) - Greyed-out state color.
+
+### Layout (LayoutGroup / GridLayoutGroup)
+- **padding** (object) - { left, right, top, bottom } in pixels.
+- **spacing** (float or array) - Gap between children.
+- **child_alignment** (string) - 'UpperLeft', 'MiddleCenter', 'LowerRight', etc.
+- **cell_size** (array) - [width, height] for GridLayoutGroup.
+- **constraint** (string) - 'Flexible', 'FixedColumnCount', 'FixedRowCount'.
+
+### ScrollRect
+- **horizontal** (bool) - Enable horizontal scrolling.
+- **vertical** (bool) - Enable vertical scrolling.
+- **movement_type** (string) - 'Unrestricted', 'Elastic', 'Clamped'.
+
+## Key Tools
+- `manage_canvas` - Canvas lifecycle: create, configure, list, delete canvases.
+- `manage_ui_element` - Individual element CRUD: create, modify, delete, plus visual effects.
+- `build_ui` - Batch tree builder: read_schema, from_tree, apply_template for bulk creation.
+- `inspect_ui` - Hierarchy inspection and querying of canvas element trees.
+
+## Best Practices
+- Always call `build_ui` action='read_schema' first if you are unsure about element types or property names.
+- Build the full UI tree in one `from_tree` call rather than creating elements one by one — it is faster and keeps the hierarchy clean.
+- Use templates as a starting point, then modify individual elements to customize.
+- Checkpoint before and after large UI builds so you can roll back mistakes.
+- Use `inspect_ui` to verify the hierarchy matches your intent before screenshotting.
+- Prefer anchor presets over manual anchor values — they are less error-prone and more readable.",
+
+            ["input_actions"] = @"# Input Action Management Guide
+
+## AI Workflow (Recommended Loop)
+1. `manage_input_actions` action='list' → find existing .inputactions assets.
+2. `manage_input_actions` action='inspect' → dump full structure of an asset.
+3. `manage_checkpoint` action='save' → create a safety checkpoint before changes.
+4. Modify maps, actions, or bindings as needed.
+5. `manage_input_actions` action='inspect' → verify the result.
+
+## Creating an Input Action Asset from Scratch
+1. `manage_input_actions` action='create' path='Assets/Input/PlayerControls.inputactions'
+2. `manage_input_actions` action='add_map' map_name='Player'
+3. `manage_input_actions` action='add_action' map_name='Player' action_name='Move' action_type='value' control_type='Vector2'
+4. `manage_input_actions` action='add_composite' map_name='Player' action_name='Move' composite_type='2DVector' parts={""up"":""<Keyboard>/w"",""down"":""<Keyboard>/s"",""left"":""<Keyboard>/a"",""right"":""<Keyboard>/d""}
+5. `manage_input_actions` action='add_action' map_name='Player' action_name='Jump' action_type='button' binding='<Keyboard>/space'
+6. `manage_input_actions` action='inspect' → verify complete structure.
+
+## Composite Binding Reference
+| Composite Type | Parts | Use Case |
+|----------------|-------|----------|
+| 1DAxis | negative, positive | Single-axis input (e.g., zoom in/out) |
+| 2DVector | up, down, left, right | WASD / arrow key movement |
+| ButtonWithOneModifier | modifier, button | Ctrl+S style shortcuts |
+| ButtonWithTwoModifiers | modifier1, modifier2, button | Ctrl+Shift+S style shortcuts |
+
+## Common Binding Paths Cheat Sheet
+### Keyboard
+- `<Keyboard>/w`, `<Keyboard>/space`, `<Keyboard>/escape`
+- `<Keyboard>/leftShift`, `<Keyboard>/leftCtrl`, `<Keyboard>/leftAlt`
+- `<Keyboard>/1` through `<Keyboard>/0` (number keys)
+
+### Mouse
+- `<Mouse>/leftButton`, `<Mouse>/rightButton`, `<Mouse>/middleButton`
+- `<Mouse>/delta` (Vector2 movement), `<Mouse>/scroll` (Vector2)
+- `<Mouse>/position` (Vector2 screen position)
+
+### Gamepad
+- `<Gamepad>/leftStick` (Vector2), `<Gamepad>/rightStick` (Vector2)
+- `<Gamepad>/buttonSouth` (A/Cross), `<Gamepad>/buttonNorth` (Y/Triangle)
+- `<Gamepad>/buttonEast` (B/Circle), `<Gamepad>/buttonWest` (X/Square)
+- `<Gamepad>/leftTrigger`, `<Gamepad>/rightTrigger` (float 0-1)
+- `<Gamepad>/leftShoulder`, `<Gamepad>/rightShoulder`
+- `<Gamepad>/dpad` (Vector2), `<Gamepad>/start`, `<Gamepad>/select`
+
+## Action Types
+- **Value** — Continuous input (movement, look). Fires on every change.
+- **Button** — Discrete press/release. Has press point threshold.
+- **PassThrough** — Like Value but does not perform conflict resolution across devices.
+
+## Key Tools
+- `manage_input_actions` — Full CRUD on assets, maps, actions, bindings, and composites.
+- `manage_component` — Attach PlayerInput component and assign the asset.
+- `get_unity_guide` topic='project_settings' — For configuring Input System settings.",
+
+            ["project_settings"] = @"# Project Settings Management Guide
+
+## AI Workflow (Recommended Loop)
+1. `manage_settings` action='list' → discover all ProjectSettings/*.asset files.
+2. `manage_settings` action='inspect' settings_file='DynamicsManager' → read all properties.
+3. `manage_settings` action='set' settings_file='DynamicsManager' property_path='m_Gravity.y' value=-15 → modify a property.
+4. `manage_settings` action='inspect' → verify the change.
+
+## Common Settings Files & Useful Properties
+
+### Physics (DynamicsManager)
+- `m_Gravity` (Vector3) — World gravity, default (0, -9.81, 0).
+- `m_DefaultContactOffset` (float) — Default contact offset for colliders.
+- `m_BounceThreshold` (float) — Minimum velocity for a bounce.
+- `m_LayerCollisionMatrix` — Which layers collide with each other.
+
+### Time (TimeManager)
+- `Fixed Timestep` (float) — Physics update interval, default 0.02 (50 Hz).
+- `Maximum Allowed Timestep` (float) — Max time a frame can process.
+- `Time Scale` (float) — Global time multiplier (1 = normal, 0 = paused).
+
+### Quality (QualitySettings)
+- Use `manage_settings` action='inspect' with property_filter='shadow' to find shadow settings.
+- Use property_filter='antiAliasing' for anti-aliasing settings.
+
+### Tags & Layers (TagManager)
+- `tags` — Array of user-defined tags.
+- `layers` — Array of layer names (32 layers total, first 8 are built-in).
+- `m_SortingLayers` — Sorting layers for 2D rendering.
+
+## Searching Across All Settings
+Use `manage_settings` action='search' query='gravity' to find properties matching a keyword across ALL settings files. This is useful when you don't know which file contains a setting.
+
+## EditorPrefs (Editor Preferences)
+EditorPrefs are per-machine editor settings, NOT project settings. They persist across projects.
+
+### Round-Trip Example
+1. `manage_settings` action='set_preference' key='MyTool.AutoSave' value='true' type='bool'
+2. `manage_settings` action='get_preference' key='MyTool.AutoSave' type='bool'
+3. `manage_settings` action='delete_preference' key='MyTool.AutoSave'
+
+### Common EditorPrefs Patterns
+- Tools typically prefix keys with their tool name: 'MyTool.SettingName'.
+- Types: string (default), int, float, bool.
+- Use get_preference to read, set_preference to write, delete_preference to clean up.
+
+## Key Tools
+- `manage_settings` — Dynamic read/write for all Project Settings and EditorPrefs.
+- `manage_component` — For per-object settings (physics materials, etc.).
+- `get_unity_guide` topic='input_actions' — For Input System asset management.",
+
             ["getting_started"] = @"# Getting Started with UnityMCP
 
 ## First Steps
@@ -360,7 +544,7 @@ When writing new tools that modify **project assets** (materials, scripts, prefa
 - `find_gameobject` or `get_scene_hierarchy` to locate objects (returns instance IDs).
 - `manage_component` action='inspect' to read component properties.
 - `manage_gameobject` or `manage_component` to make changes.
-- `capture_screenshot` or `manage_component` action='inspect' to verify results.
+- `vision_capture` or `manage_component` action='inspect' to verify results.
 
 ## Safety Practices
 - Save checkpoints before destructive operations (delete, bulk modify, script edits).
@@ -369,7 +553,7 @@ When writing new tools that modify **project assets** (materials, scripts, prefa
 
 ## Discovering More Tools
 - `search_tools` with no args for a full category listing.
-- `get_unity_guide` with a topic for detailed guidance: scene, gameobjects, scripting, materials, debugging, building, ui, workflows.
+- `get_unity_guide` with a topic for detailed guidance: scene, gameobjects, scripting, materials, debugging, building, ui, canvas_ui, input_actions, project_settings, workflows.
 - `diagnose_scene` to scan for missing references, shader issues, and build problems."
         };
 
@@ -386,6 +570,9 @@ Call get_unity_guide with a topic parameter for detailed guidance on each area:
 - **debugging** - Console reading, diagnostic workflows, profiler usage, and common error fixes.
 - **building** - Build pipeline, test execution, platform targeting, and async job polling.
 - **ui** - UI Toolkit querying, Canvas setup, and EventSystem requirements.
+- **canvas_ui** - Canvas UI building tools: AI workflow loop, templates, anchor presets, style properties, and best practices.
+- **input_actions** - Input Action Asset management: create assets, maps, actions, bindings, composites, and common binding paths.
+- **project_settings** - Project Settings and Editor Preferences: discover, inspect, and modify settings dynamically.
 - **workflows** - Multi-step tool chaining recipes for common tasks, plus checkpoint and asset tracking conventions.
 
 ## Universal Conventions
@@ -405,7 +592,7 @@ Call get_unity_guide with a topic parameter for detailed guidance on each area:
         /// </summary>
         [MCPTool("get_unity_guide", "Returns guidance on Unity tools, conventions, and workflow recipes. New session? Start with topic='getting_started'. Use topic='workflows' for tool chaining recipes.", Category = "Guide", ReadOnlyHint = true)]
         public static object Guide(
-            [MCPParam("topic", "Topic to get guidance on", Enum = new[] { "getting_started", "scene", "gameobjects", "scripting", "materials", "debugging", "building", "ui", "workflows" })] string topic = null)
+            [MCPParam("topic", "Topic to get guidance on", Enum = new[] { "getting_started", "scene", "gameobjects", "scripting", "materials", "debugging", "building", "ui", "canvas_ui", "input_actions", "project_settings", "workflows" })] string topic = null)
         {
             try
             {

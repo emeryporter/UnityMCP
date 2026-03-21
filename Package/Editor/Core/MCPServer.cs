@@ -27,7 +27,7 @@ namespace UnityMCP.Editor.Core
 
 SAFETY: Save a checkpoint (manage_checkpoint action='save') before destructive operations like deleting objects, modifying materials, or editing scripts. Use manage_checkpoint action='restore' to roll back if something goes wrong.
 
-WORKFLOW: find -> inspect -> modify -> verify. Use find_gameobject or get_scene_hierarchy to locate objects, manage_component action='inspect' to read state, then modify, then verify with capture_screenshot or another inspect call.
+WORKFLOW: find -> inspect -> modify -> verify. Use find_gameobject or get_scene_hierarchy to locate objects, manage_component action='inspect' to read state, then modify, then verify with vision_capture or another inspect call.
 
 DISCOVERY: Call get_unity_guide with topic='getting_started' for workflow recipes and best practices. Call search_tools with no args for a category overview of all tools.
 
@@ -239,6 +239,8 @@ ASYNC JOBS: Build, test, and profiler operations return a job_id. Poll the same 
                         annotationsObject["idempotentHint"] = tool.annotations.idempotentHint.Value;
                     if (tool.annotations.openWorldHint.HasValue)
                         annotationsObject["openWorldHint"] = tool.annotations.openWorldHint.Value;
+                    if (tool.annotations.batchableHint.HasValue)
+                        annotationsObject["batchableHint"] = tool.annotations.batchableHint.Value;
                     if (tool.annotations.title != null)
                         annotationsObject["title"] = tool.annotations.title;
                     if (annotationsObject.Count > 0)
@@ -290,10 +292,11 @@ ASYNC JOBS: Build, test, and profiler operations return a job_id. Poll the same 
 
         private JObject SerializePropertySchema(PropertySchema propertySchema)
         {
-            var schemaObject = new JObject
+            var schemaObject = new JObject();
+            if (!string.IsNullOrEmpty(propertySchema.type))
             {
-                ["type"] = propertySchema.type
-            };
+                schemaObject["type"] = propertySchema.type;
+            }
 
             if (!string.IsNullOrEmpty(propertySchema.description))
             {
@@ -313,6 +316,11 @@ ASYNC JOBS: Build, test, and profiler operations return a job_id. Poll the same 
             if (propertySchema.items != null)
             {
                 schemaObject["items"] = SerializePropertySchema(propertySchema.items);
+            }
+
+            if (propertySchema.additionalProperties != null)
+            {
+                schemaObject["additionalProperties"] = SerializePropertySchema(propertySchema.additionalProperties);
             }
 
             if (propertySchema.@default != null)

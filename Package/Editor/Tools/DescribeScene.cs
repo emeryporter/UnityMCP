@@ -110,7 +110,7 @@ namespace UnityMCP.Editor.Tools
         /// camera info, lighting, key objects, and lightweight issue detection.
         /// </summary>
         [MCPTool("describe_scene", "Returns a narrative summary of the active scene including camera, lighting, key objects, and issue detection. Good starting point to understand scene state before making changes.",
-            Category = "Scene", ReadOnlyHint = true)]
+            Category = "Scene", ReadOnlyHint = true, BatchableHint = true)]
         public static object Describe(
             [MCPParam("page_size", "Maximum number of root objects to include per page (default: 50)", Minimum = 1, Maximum = 200)] int pageSize = DefaultPageSize,
             [MCPParam("cursor", "Starting index for root object pagination (default: 0)", Minimum = 0)] int cursor = 0)

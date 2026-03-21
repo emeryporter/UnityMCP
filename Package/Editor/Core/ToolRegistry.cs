@@ -240,6 +240,20 @@ namespace UnityMCP.Editor.Core
         }
 
         /// <summary>
+        /// Gets the tool info for a registered tool by name.
+        /// Returns null if not found.
+        /// </summary>
+        internal static IToolInfo GetToolInfo(string name)
+        {
+            EnsureInitialized();
+            lock (_lock)
+            {
+                _tools.TryGetValue(name, out var toolInfo);
+                return toolInfo;
+            }
+        }
+
+        /// <summary>
         /// Invokes a tool by name with the given arguments.
         /// </summary>
         public static object Invoke(string name, Dictionary<string, object> arguments)
@@ -321,6 +335,8 @@ namespace UnityMCP.Editor.Core
         string Name { get; }
         string Description { get; }
         string Category { get; }
+        bool IsBatchable { get; }
+        bool IsDestructive { get; }
         ToolDefinition ToDefinition();
         object Invoke(Dictionary<string, object> arguments);
     }
@@ -338,6 +354,8 @@ namespace UnityMCP.Editor.Core
         public string Name => _attribute.Name;
         public string Description => _attribute.Description;
         public string Category => _attribute.Category;
+        public bool IsBatchable => _attribute.BatchableHint;
+        public bool IsDestructive => _attribute.DestructiveHint;
 
         public MethodToolInfo(MCPToolAttribute attribute, MethodInfo method)
         {
@@ -387,7 +405,7 @@ namespace UnityMCP.Editor.Core
             // Only include annotations if at least one hint was explicitly set
             bool hasAnnotations = _attribute.ReadOnlyHint || _attribute.DestructiveHint ||
                                   _attribute.IdempotentHint || _attribute.OpenWorldHint ||
-                                  _attribute.Title != null;
+                                  _attribute.BatchableHint || _attribute.Title != null;
             if (hasAnnotations)
             {
                 definition.annotations = new ToolAnnotations();
@@ -395,6 +413,7 @@ namespace UnityMCP.Editor.Core
                 if (_attribute.DestructiveHint) definition.annotations.destructiveHint = true;
                 if (_attribute.IdempotentHint) definition.annotations.idempotentHint = true;
                 if (_attribute.OpenWorldHint) definition.annotations.openWorldHint = true;
+                if (_attribute.BatchableHint) definition.annotations.batchableHint = true;
                 if (_attribute.Title != null) definition.annotations.title = _attribute.Title;
             }
 
@@ -515,6 +534,8 @@ namespace UnityMCP.Editor.Core
         public string Name => _attribute.Name;
         public string Description => _attribute.Description;
         public string Category => _attribute.Category;
+        public bool IsBatchable => _attribute.BatchableHint;
+        public bool IsDestructive => _attribute.DestructiveHint || _actions.Values.Any(a => a.Attribute.DestructiveHint);
 
         public ActionToolInfo(MCPToolAttribute attribute, Dictionary<string, ActionInfo> actions)
         {
@@ -624,7 +645,7 @@ namespace UnityMCP.Editor.Core
             if (_attribute.OpenWorldHint) anyOpenWorld = true;
 
             bool hasAnnotations = anyDestructive || allReadOnly || allIdempotent || anyOpenWorld ||
-                                  _attribute.Title != null;
+                                  _attribute.BatchableHint || _attribute.Title != null;
             if (hasAnnotations)
             {
                 definition.annotations = new ToolAnnotations();
@@ -632,6 +653,7 @@ namespace UnityMCP.Editor.Core
                 if (allReadOnly) definition.annotations.readOnlyHint = true;
                 if (allIdempotent) definition.annotations.idempotentHint = true;
                 if (anyOpenWorld) definition.annotations.openWorldHint = true;
+                if (_attribute.BatchableHint) definition.annotations.batchableHint = true;
                 if (_attribute.Title != null) definition.annotations.title = _attribute.Title;
             }
 
@@ -785,6 +807,21 @@ namespace UnityMCP.Editor.Core
                 }
             }
 
+            // Handle dictionary value types (emit additionalProperties for object schemas from dictionaries)
+            if (metadata.JsonType == "object" && metadata.ParameterInfo.ParameterType.IsGenericType
+                && typeof(System.Collections.IDictionary).IsAssignableFrom(metadata.ParameterInfo.ParameterType))
+            {
+                var genericArgs = metadata.ParameterInfo.ParameterType.GetGenericArguments();
+                if (genericArgs.Length == 2)
+                {
+                    var valueType = genericArgs[1];
+                    // For object values, use empty schema (any type); for typed values, specify the type
+                    schema.additionalProperties = valueType == typeof(object)
+                        ? new PropertySchema()
+                        : new PropertySchema { type = GetJsonSchemaType(valueType) };
+                }
+            }
+
             return schema;
         }
 
@@ -810,10 +847,12 @@ namespace UnityMCP.Editor.Core
                 return value;
             }
 
-            // String conversion
+            // String conversion — extract raw value from JValue to avoid JSON-serialized quotes
             if (targetType == typeof(string))
             {
-                return value.ToString();
+                return value is Newtonsoft.Json.Linq.JValue jv
+                    ? jv.Value?.ToString() ?? ""
+                    : value.ToString();
             }
 
             // Boolean conversion
@@ -849,6 +888,13 @@ namespace UnityMCP.Editor.Core
             if (targetType.IsArray || (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(List<>)))
             {
                 return ConvertToArrayOrList(value, targetType);
+            }
+
+            // Dictionary<string, object> conversion from JSON string
+            if (targetType == typeof(Dictionary<string, object>) && value is string dictJsonString)
+            {
+                var parsedObject = JObject.Parse(dictJsonString);
+                return ToolRegistry.ConvertJObjectToDictionary(parsedObject);
             }
 
             // For complex objects, try JSON serialization via Unity
@@ -928,6 +974,10 @@ namespace UnityMCP.Editor.Core
             if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte)) return "integer";
             if (type == typeof(float) || type == typeof(double) || type == typeof(decimal)) return "number";
             if (type == typeof(bool)) return "boolean";
+
+            // Check for dictionary types before IEnumerable (dictionaries implement IEnumerable)
+            if (type.IsGenericType && typeof(System.Collections.IDictionary).IsAssignableFrom(type)) return "object";
+
             if (type.IsArray || (type.IsGenericType && typeof(System.Collections.IEnumerable).IsAssignableFrom(type))) return "array";
 
             return "object";

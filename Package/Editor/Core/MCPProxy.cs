@@ -119,6 +119,33 @@ namespace UnityMCP.Editor.Core
         }
 
         /// <summary>
+        /// Gets or sets the maximum number of calls allowed in a single batch.
+        /// </summary>
+        public static int BatchMaxSize
+        {
+            get => EditorPrefs.GetInt("UnityMCP_BatchMaxSize", 20);
+            set => EditorPrefs.SetInt("UnityMCP_BatchMaxSize", value);
+        }
+
+        /// <summary>
+        /// Gets or sets the maximum number of consecutive errors before a batch is stopped.
+        /// </summary>
+        public static int BatchMaxConsecutiveErrors
+        {
+            get => EditorPrefs.GetInt("UnityMCP_BatchMaxConsecutiveErrors", 3);
+            set => EditorPrefs.SetInt("UnityMCP_BatchMaxConsecutiveErrors", value);
+        }
+
+        /// <summary>
+        /// Gets or sets the maximum error percentage (0-100) before a batch is stopped.
+        /// </summary>
+        public static int BatchMaxErrorPercent
+        {
+            get => EditorPrefs.GetInt("UnityMCP_BatchMaxErrorPercent", 50);
+            set => EditorPrefs.SetInt("UnityMCP_BatchMaxErrorPercent", value);
+        }
+
+        /// <summary>
         /// Checks whether the loaded native proxy was compiled with TLS support.
         /// Returns false if the DLL is missing or outdated.
         /// </summary>

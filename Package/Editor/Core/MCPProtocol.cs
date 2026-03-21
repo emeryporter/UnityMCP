@@ -297,6 +297,7 @@ namespace UnityMCP.Editor.Core
         public string description;
         public List<string> @enum;
         public PropertySchema items;
+        public PropertySchema additionalProperties;
         public object @default;
         public double? minimum;
         public double? maximum;
@@ -403,6 +404,7 @@ namespace UnityMCP.Editor.Core
         public bool? destructiveHint;
         public bool? idempotentHint;
         public bool? openWorldHint;
+        public bool? batchableHint;
         public string title;
     }
 
