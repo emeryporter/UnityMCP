@@ -24,6 +24,11 @@ namespace UnityMCP.Editor.Core
         private static readonly object s_lock = new object();
         private const int MaxSessions = 10;
         private static readonly TimeSpan SessionTimeout = TimeSpan.FromMinutes(15);
+        /// <summary>
+        /// Sessions that never received a request after initialize are likely ghost sessions
+        /// from clients that reconnected. Expire these much faster than active sessions.
+        /// </summary>
+        private static readonly TimeSpan UnusedSessionTimeout = TimeSpan.FromSeconds(60);
         private static int s_agentCounter = 0;
 
         /// <summary>Fired when sessions are added or removed. UI subscribes to trigger Repaint.</summary>
@@ -38,6 +43,7 @@ namespace UnityMCP.Editor.Core
         public static SessionInfo CreateSession(string sessionId)
         {
             SessionInfo sessionInfo = null;
+            List<string> evictedSessionIds = null;
 
             lock (s_lock)
             {
@@ -46,10 +52,23 @@ namespace UnityMCP.Editor.Core
                     return existingSession;
 
                 // Prune expired sessions to free capacity
-                PruneExpiredSessionsInternal();
+                var prunedIds = PruneExpiredSessionsInternal();
+                if (prunedIds.Count > 0)
+                    evictedSessionIds = prunedIds;
 
+                // If still at capacity, evict the oldest inactive session (LRU)
+                // to prevent a single reconnecting client from exhausting all slots
                 if (s_sessions.Count >= MaxSessions)
-                    return null;
+                {
+                    var oldestSessionId = s_sessions
+                        .OrderBy(kvp => kvp.Value.LastActivity)
+                        .First().Key;
+
+                    s_sessions.Remove(oldestSessionId);
+
+                    evictedSessionIds ??= new List<string>();
+                    evictedSessionIds.Add(oldestSessionId);
+                }
 
                 s_agentCounter++;
                 sessionInfo = new SessionInfo
@@ -62,6 +81,13 @@ namespace UnityMCP.Editor.Core
                 };
 
                 s_sessions[sessionId] = sessionInfo;
+            }
+
+            // Release locks for evicted sessions outside the lock
+            if (evictedSessionIds != null)
+            {
+                foreach (var evictedId in evictedSessionIds)
+                    LockManager.ReleaseAllForSession(evictedId);
             }
 
             OnSessionsChanged?.Invoke();
@@ -190,13 +216,20 @@ namespace UnityMCP.Editor.Core
 
         /// <summary>
         /// Internal pruning that assumes the lock is already held.
+        /// Uses two-tier timeout: unused sessions (request_count == 0) expire after
+        /// <see cref="UnusedSessionTimeout"/>, active sessions after <see cref="SessionTimeout"/>.
         /// Returns the list of pruned session IDs so the caller can release locks outside the lock.
         /// </summary>
         private static List<string> PruneExpiredSessionsInternal()
         {
             var now = DateTime.Now;
             var expiredSessionIds = s_sessions
-                .Where(kvp => now - kvp.Value.LastActivity > SessionTimeout)
+                .Where(kvp =>
+                {
+                    var idleTime = now - kvp.Value.LastActivity;
+                    var timeout = kvp.Value.RequestCount == 0 ? UnusedSessionTimeout : SessionTimeout;
+                    return idleTime > timeout;
+                })
                 .Select(kvp => kvp.Key)
                 .ToList();
 

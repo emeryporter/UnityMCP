@@ -406,16 +406,27 @@ static void HandleHttpRequest(struct mg_connection* connection, struct mg_http_m
     memcpy(slot->request, http_message->body.buf, body_length);
     slot->request[body_length] = '\0';
 
-    /* Extract or generate session ID */
+    /* Extract or generate session ID.
+     * Only generate a new session ID for initialize requests — per MCP spec,
+     * non-initialize requests MUST include the Mcp-Session-Id header from
+     * a prior initialize response. Generating IDs for every request caused
+     * ghost sessions when clients reconnected without the header. */
     struct mg_str *session_header = mg_http_get_header(http_message, "Mcp-Session-Id");
     if (session_header != NULL && session_header->len > 0 && session_header->len < PROXY_SESSION_ID_SIZE)
     {
+        /* Client provided a session ID — use it (normal case + domain reload recovery) */
         memcpy(slot->session_id, session_header->buf, session_header->len);
         slot->session_id[session_header->len] = '\0';
     }
+    else if (strstr(slot->request, "\"initialize\"") != NULL)
+    {
+        /* Initialize request without session header — generate a new session ID */
+        GenerateSessionId(slot->session_id, sizeof(slot->session_id));
+    }
     else
     {
-        GenerateSessionId(slot->session_id, sizeof(slot->session_id));
+        /* Non-initialize without session header — pass empty so C# can reject */
+        slot->session_id[0] = '\0';
     }
 
     /* Initialize slot timing */

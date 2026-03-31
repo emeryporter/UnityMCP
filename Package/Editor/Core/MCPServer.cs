@@ -160,9 +160,9 @@ COORDINATION: Locks are per-resource (individual GameObjects, files, components)
 
                 JToken paramsToken = requestObject["params"];
 
-                // Session tracking: touch existing sessions or auto-create after domain reload.
-                // Only reject requests with no session ID at all (proxy always provides one
-                // for initialized clients via the Mcp-Session-Id header).
+                // Session tracking: validate session exists and update activity.
+                // The proxy only generates session IDs for initialize requests; non-initialize
+                // requests without the Mcp-Session-Id header arrive with an empty session ID.
                 if (method != "initialize" && method != "notifications/initialized")
                 {
                     if (string.IsNullOrEmpty(sessionId))
@@ -174,7 +174,11 @@ COORDINATION: Locks are per-resource (individual GameObjects, files, components)
 
                     if (!SessionManager.TouchSession(sessionId))
                     {
-                        // Unknown session — likely lost to domain reload. Re-create it.
+                        // Unknown session — client provided a session ID (via header) that we
+                        // don't recognize, likely lost to domain reload. Auto-recover by creating
+                        // a new session with the client's ID. This is safe because the proxy
+                        // only passes non-empty session IDs here when the client sent the
+                        // Mcp-Session-Id header (not auto-generated for non-initialize requests).
                         SessionManager.CreateSession(sessionId);
                     }
                 }
