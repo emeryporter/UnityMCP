@@ -13,8 +13,7 @@ using UnityEngine.InputSystem.UI;
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
 
-
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Tools
 {
@@ -170,7 +169,7 @@ namespace UnityMCP.Editor.Tools
                 message = createdEventSystem
                     ? $"Canvas '{name}' created with EventSystem."
                     : $"Canvas '{name}' created (EventSystem already exists).",
-                instance_id = canvasGO.GetInstanceID(),
+                instance_id = canvasGO.GetStableId(),
                 name = canvasGO.name,
                 render_mode = canvas.renderMode.ToString(),
                 scaler_mode = scaler.uiScaleMode.ToString(),
@@ -287,7 +286,7 @@ namespace UnityMCP.Editor.Tools
                 message = changes.Count > 0
                     ? $"Canvas '{targetGO.name}' configured: {string.Join(", ", changes)}."
                     : $"No changes applied to Canvas '{targetGO.name}'.",
-                instance_id = targetGO.GetInstanceID(),
+                instance_id = targetGO.GetStableId(),
                 name = targetGO.name,
                 changes
             };
@@ -307,7 +306,7 @@ namespace UnityMCP.Editor.Tools
 
                 var info = new Dictionary<string, object>
                 {
-                    { "instance_id", go.GetInstanceID() },
+                    { "instance_id", go.GetStableId() },
                     { "name", go.name },
                     { "active", go.activeInHierarchy },
                     { "render_mode", canvas.renderMode.ToString() },
@@ -371,7 +370,7 @@ namespace UnityMCP.Editor.Tools
             }
 
             string canvasName = targetGO.name;
-            int canvasInstanceId = targetGO.GetInstanceID();
+            int canvasInstanceId = targetGO.GetStableId();
             Undo.DestroyObjectImmediate(targetGO);
 
             bool deletedEventSystem = false;
@@ -462,7 +461,7 @@ namespace UnityMCP.Editor.Tools
             // Try instance ID first
             if (int.TryParse(target, out int instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = EntityIdCompat.ResolveObject(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     return gameObject;

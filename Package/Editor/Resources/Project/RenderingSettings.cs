@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Resources.Project
 {
@@ -196,7 +197,7 @@ namespace UnityMCP.Editor.Resources.Project
                 sun = sun != null ? new
                 {
                     name = sun.name,
-                    instanceId = sun.GetInstanceID(),
+                    instanceId = sun.GetStableId(),
                     lightType = sun.type.ToString(),
                     color = FormatColor(sun.color),
                     intensity = sun.intensity

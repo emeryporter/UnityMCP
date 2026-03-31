@@ -4,8 +4,6 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
-
 namespace UnityMCP.Editor.Utilities
 {
     /// <summary>
@@ -337,7 +335,7 @@ namespace UnityMCP.Editor.Utilities
 
             return new Dictionary<string, object>
             {
-                { "$ref", unityObject.GetInstanceID() },
+                { "$ref", unityObject.GetStableId() },
                 { "$name", unityObject.name },
                 { "$type", unityObject.GetType().Name }
             };
@@ -603,7 +601,7 @@ namespace UnityMCP.Editor.Utilities
                         try
                         {
                             int instanceId = Convert.ToInt32(value);
-                            property.objectReferenceValue = EditorUtility.InstanceIDToObject(instanceId);
+                            property.objectReferenceValue = EntityIdCompat.ResolveObject(instanceId);
                             return true;
                         }
                         catch
@@ -847,7 +845,7 @@ namespace UnityMCP.Editor.Utilities
             // Resolve by instance ID (integer)
             if (refValue is int instanceId)
             {
-                resolvedObject = EditorUtility.InstanceIDToObject(instanceId);
+                resolvedObject = EntityIdCompat.ResolveObject(instanceId);
                 refDescription = $"instance {instanceId}";
                 if (resolvedObject == null)
                 {
@@ -858,7 +856,7 @@ namespace UnityMCP.Editor.Utilities
             {
                 // Handle JSON deserialization which may produce long instead of int
                 int intId = (int)longId;
-                resolvedObject = EditorUtility.InstanceIDToObject(intId);
+                resolvedObject = EntityIdCompat.ResolveObject(intId);
                 refDescription = $"instance {intId}";
                 if (resolvedObject == null)
                 {

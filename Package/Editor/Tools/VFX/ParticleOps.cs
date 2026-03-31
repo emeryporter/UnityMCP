@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityMCP.Editor.Core;
+using UnityMCP.Editor.Utilities;
 
 
 namespace UnityMCP.Editor.Tools.VFX
@@ -30,7 +31,7 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 message = $"Particle system '{particleSystem.name}' started playing.",
                 gameObject = particleSystem.name,
-                instanceID = particleSystem.gameObject.GetInstanceID(),
+                instanceID = particleSystem.gameObject.GetStableId(),
                 isPlaying = particleSystem.isPlaying,
                 withChildren
             };
@@ -54,7 +55,7 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 message = $"Particle system '{particleSystem.name}' paused.",
                 gameObject = particleSystem.name,
-                instanceID = particleSystem.gameObject.GetInstanceID(),
+                instanceID = particleSystem.gameObject.GetStableId(),
                 isPaused = particleSystem.isPaused,
                 withChildren
             };
@@ -82,7 +83,7 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 message = $"Particle system '{particleSystem.name}' stopped.",
                 gameObject = particleSystem.name,
-                instanceID = particleSystem.gameObject.GetInstanceID(),
+                instanceID = particleSystem.gameObject.GetStableId(),
                 isStopped = particleSystem.isStopped,
                 cleared = clearParticles,
                 withChildren
@@ -109,7 +110,7 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 message = $"Particle system '{particleSystem.name}' restarted.",
                 gameObject = particleSystem.name,
-                instanceID = particleSystem.gameObject.GetInstanceID(),
+                instanceID = particleSystem.gameObject.GetStableId(),
                 isPlaying = particleSystem.isPlaying,
                 withChildren
             };
@@ -131,7 +132,7 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 gameObject = particleSystem.name,
                 path = VFXCommon.GetGameObjectPath(particleSystem.gameObject),
-                instanceID = particleSystem.gameObject.GetInstanceID(),
+                instanceID = particleSystem.gameObject.GetStableId(),
                 state = new
                 {
                     isPlaying = particleSystem.isPlaying,
@@ -218,7 +219,7 @@ namespace UnityMCP.Editor.Tools.VFX
                     ? $"Successfully set {successCount} property(ies) on particle system."
                     : $"Set {successCount} property(ies), {failCount} failed.",
                 gameObject = particleSystem.name,
-                instanceID = particleSystem.gameObject.GetInstanceID(),
+                instanceID = particleSystem.gameObject.GetStableId(),
                 results
             };
         }

@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityMCP.Editor.Core;
+using UnityMCP.Editor.Utilities;
 
 
 namespace UnityMCP.Editor.Tools.VFX
@@ -96,8 +97,8 @@ namespace UnityMCP.Editor.Tools.VFX
                 message = $"LineRenderer created on '{gameObject.name}'.",
                 gameObject = gameObject.name,
                 path = VFXCommon.GetGameObjectPath(gameObject),
-                instanceID = gameObject.GetInstanceID(),
-                componentInstanceID = lineRenderer.GetInstanceID(),
+                instanceID = gameObject.GetStableId(),
+                componentInstanceID = lineRenderer.GetStableId(),
                 positionCount = lineRenderer.positionCount
             };
         }
@@ -124,8 +125,8 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 gameObject = lineRenderer.name,
                 path = VFXCommon.GetGameObjectPath(lineRenderer.gameObject),
-                instanceID = lineRenderer.gameObject.GetInstanceID(),
-                componentInstanceID = lineRenderer.GetInstanceID(),
+                instanceID = lineRenderer.gameObject.GetStableId(),
+                componentInstanceID = lineRenderer.GetStableId(),
                 positionCount = lineRenderer.positionCount,
                 positions = positionsList,
                 useWorldSpace = lineRenderer.useWorldSpace,
@@ -264,7 +265,7 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 message = $"Modified {modifiedProperties.Count} property(ies) on LineRenderer.",
                 gameObject = lineRenderer.name,
-                instanceID = lineRenderer.gameObject.GetInstanceID(),
+                instanceID = lineRenderer.gameObject.GetStableId(),
                 modifiedProperties,
                 positionCount = lineRenderer.positionCount
             };

@@ -11,8 +11,6 @@ using UnityMCP.Editor.Core;
 using UnityMCP.Editor.Services;
 using UnityMCP.Editor.Utilities;
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
-
 namespace UnityMCP.Editor.Tools
 {
     /// <summary>
@@ -582,7 +580,7 @@ namespace UnityMCP.Editor.Tools
             // Try to parse as instance ID first
             if (int.TryParse(target, out int instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = EntityIdCompat.ResolveObject(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     return gameObject;
@@ -676,7 +674,7 @@ namespace UnityMCP.Editor.Tools
             var summary = new Dictionary<string, object>
             {
                 { "name", gameObject.name },
-                { "instanceID", gameObject.GetInstanceID() },
+                { "instanceID", gameObject.GetStableId() },
                 { "activeSelf", gameObject.activeSelf },
                 { "activeInHierarchy", gameObject.activeInHierarchy },
                 { "tag", gameObject.tag },

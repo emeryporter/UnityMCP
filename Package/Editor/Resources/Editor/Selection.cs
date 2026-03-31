@@ -1,6 +1,7 @@
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Resources.Editor
 {
@@ -29,13 +30,13 @@ namespace UnityMCP.Editor.Resources.Editor
                 activeObject = activeObject != null ? new
                 {
                     name = activeObject.name,
-                    instanceId = activeObject.GetInstanceID(),
+                    instanceId = activeObject.GetStableId(),
                     type = activeObject.GetType().Name
                 } : null,
                 activeGameObject = activeGameObject != null ? new
                 {
                     name = activeGameObject.name,
-                    instanceId = activeGameObject.GetInstanceID(),
+                    instanceId = activeGameObject.GetStableId(),
                     tag = activeGameObject.tag,
                     layer = LayerMask.LayerToName(activeGameObject.layer),
                     isActive = activeGameObject.activeInHierarchy,
@@ -50,7 +51,7 @@ namespace UnityMCP.Editor.Resources.Editor
                 selectedGameObjects = selectedGameObjects.Select(gameObject => new
                 {
                     name = gameObject.name,
-                    instanceId = gameObject.GetInstanceID(),
+                    instanceId = gameObject.GetStableId(),
                     tag = gameObject.tag,
                     layer = LayerMask.LayerToName(gameObject.layer),
                     isActive = gameObject.activeInHierarchy
@@ -60,7 +61,7 @@ namespace UnityMCP.Editor.Resources.Editor
                     .Select(asset => new
                     {
                         name = asset.name,
-                        instanceId = asset.GetInstanceID(),
+                        instanceId = asset.GetStableId(),
                         type = asset.GetType().Name,
                         assetPath = AssetDatabase.GetAssetPath(asset)
                     }).ToArray(),

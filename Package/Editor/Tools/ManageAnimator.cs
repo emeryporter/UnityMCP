@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Tools
 {
@@ -1389,7 +1390,7 @@ namespace UnityMCP.Editor.Tools
 
             if (int.TryParse(target, out int instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = EntityIdCompat.ResolveObject(instanceId);
                 if (obj is GameObject gameObject) return gameObject;
                 if (obj is Component component) return component.gameObject;
             }
@@ -1772,7 +1773,7 @@ namespace UnityMCP.Editor.Tools
             {
                 name = controller.name,
                 assetPath,
-                instanceId = controller.GetInstanceID(),
+                instanceId = controller.GetStableId(),
                 totalLayers,
                 cursor = startIndex,
                 pageSize,

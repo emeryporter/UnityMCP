@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Resources.Editor
 {
@@ -37,7 +38,7 @@ namespace UnityMCP.Editor.Resources.Editor
                 prefabRoot = prefabRoot != null ? new
                 {
                     name = prefabRoot.name,
-                    instanceId = prefabRoot.GetInstanceID(),
+                    instanceId = prefabRoot.GetStableId(),
                     childCount = prefabRoot.transform.childCount,
                     componentCount = prefabRoot.GetComponents<UnityEngine.Component>().Length
                 } : null,

@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Tools
 {
@@ -78,7 +77,7 @@ namespace UnityMCP.Editor.Tools
                             continue;
                         }
 
-                        var resolvedObject = EditorUtility.InstanceIDToObject(instanceId);
+                        var resolvedObject = EntityIdCompat.ResolveObject(instanceId);
                         if (resolvedObject != null)
                         {
                             objectsToSelect.Add(resolvedObject);
@@ -182,7 +181,7 @@ namespace UnityMCP.Editor.Tools
             var baseData = new Dictionary<string, object>
             {
                 { "name", selectedObject.name },
-                { "instanceId", selectedObject.GetInstanceID() },
+                { "instanceId", selectedObject.GetStableId() },
                 { "type", selectedObject.GetType().Name }
             };
 

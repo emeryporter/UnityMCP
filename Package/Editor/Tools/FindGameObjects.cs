@@ -7,8 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
-
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Tools
 {
@@ -98,7 +97,7 @@ namespace UnityMCP.Editor.Tools
                 throw MCPException.InvalidParams($"Invalid instance ID: '{searchTerm}'. Must be an integer.");
             }
 
-            var obj = EditorUtility.InstanceIDToObject(instanceId);
+            var obj = EntityIdCompat.ResolveObject(instanceId);
 
             if (obj is GameObject gameObject)
             {
@@ -475,7 +474,7 @@ namespace UnityMCP.Editor.Tools
                 var gameObject = results[i];
                 if (gameObject != null)
                 {
-                    instanceIds.Add(gameObject.GetInstanceID());
+                    instanceIds.Add(gameObject.GetStableId());
                 }
             }
 

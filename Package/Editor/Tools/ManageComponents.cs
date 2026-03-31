@@ -11,8 +11,6 @@ using UnityMCP.Editor.Core;
 using UnityMCP.Editor.Utilities;
 
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
-
 namespace UnityMCP.Editor.Tools
 {
     /// <summary>
@@ -265,9 +263,9 @@ namespace UnityMCP.Editor.Tools
                     success = true,
                     message = $"Added component '{componentTypeName}' to '{targetGameObject.name}'.",
                     gameObject = targetGameObject.name,
-                    instanceID = targetGameObject.GetInstanceID(),
+                    instanceID = targetGameObject.GetStableId(),
                     componentType = componentTypeName,
-                    componentInstanceID = newComponent.GetInstanceID(),
+                    componentInstanceID = newComponent.GetStableId(),
                     propertyResults = propertyResults.Count > 0 ? propertyResults : null
                 };
             }
@@ -327,7 +325,7 @@ namespace UnityMCP.Editor.Tools
 
             try
             {
-                int componentInstanceId = componentToRemove.GetInstanceID();
+                int componentInstanceId = componentToRemove.GetStableId();
                 Undo.DestroyObjectImmediate(componentToRemove);
 
                 EditorUtility.SetDirty(targetGameObject);
@@ -337,7 +335,7 @@ namespace UnityMCP.Editor.Tools
                     success = true,
                     message = $"Removed component '{componentTypeName}' from '{targetGameObject.name}'.",
                     gameObject = targetGameObject.name,
-                    instanceID = targetGameObject.GetInstanceID(),
+                    instanceID = targetGameObject.GetStableId(),
                     removedComponentType = componentTypeName,
                     removedComponentInstanceID = componentInstanceId
                 };
@@ -441,9 +439,9 @@ namespace UnityMCP.Editor.Tools
                 success = failCount == 0,
                 message,
                 gameObject = targetGameObject.name,
-                instanceID = targetGameObject.GetInstanceID(),
+                instanceID = targetGameObject.GetStableId(),
                 componentType = componentTypeName,
-                componentInstanceID = component.GetInstanceID(),
+                componentInstanceID = component.GetStableId(),
                 propertyResults = results
             };
         }
@@ -538,7 +536,7 @@ namespace UnityMCP.Editor.Tools
                     gameObject = new
                     {
                         name = targetGameObject.name,
-                        instanceId = targetGameObject.GetInstanceID()
+                        instanceId = targetGameObject.GetStableId()
                     },
                     totalProperties,
                     truncated,
@@ -883,7 +881,7 @@ namespace UnityMCP.Editor.Tools
                 case "by_id":
                     if (int.TryParse(target, out int instanceId))
                     {
-                        var obj = EditorUtility.InstanceIDToObject(instanceId);
+                        var obj = EntityIdCompat.ResolveObject(instanceId);
                         if (obj is GameObject gameObject)
                         {
                             return gameObject;

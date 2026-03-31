@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Resources.Editor
 {
@@ -37,7 +38,7 @@ namespace UnityMCP.Editor.Resources.Editor
                         title = window.titleContent?.text ?? "Unknown",
                         type = window.GetType().Name,
                         fullTypeName = window.GetType().FullName,
-                        instanceId = window.GetInstanceID(),
+                        instanceId = window.GetStableId(),
                         position = new
                         {
                             x = window.position.x,
@@ -87,13 +88,13 @@ namespace UnityMCP.Editor.Resources.Editor
                 {
                     title = focusedWindow.titleContent?.text ?? "Unknown",
                     type = focusedWindow.GetType().Name,
-                    instanceId = focusedWindow.GetInstanceID()
+                    instanceId = focusedWindow.GetStableId()
                 } : null,
                 mouseOverWindow = mouseOverWindow != null ? new
                 {
                     title = mouseOverWindow.titleContent?.text ?? "Unknown",
                     type = mouseOverWindow.GetType().Name,
-                    instanceId = mouseOverWindow.GetInstanceID()
+                    instanceId = mouseOverWindow.GetStableId()
                 } : null,
                 windows = windowInfoList.ToArray(),
                 windowTypesSummary = windowTypeCounts

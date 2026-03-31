@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityMCP.Editor.Core;
+using UnityMCP.Editor.Utilities;
 
 
 namespace UnityMCP.Editor.Tools.VFX
@@ -28,8 +29,8 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 gameObject = trailRenderer.name,
                 path = VFXCommon.GetGameObjectPath(trailRenderer.gameObject),
-                instanceID = trailRenderer.gameObject.GetInstanceID(),
-                componentInstanceID = trailRenderer.GetInstanceID(),
+                instanceID = trailRenderer.gameObject.GetStableId(),
+                componentInstanceID = trailRenderer.GetStableId(),
                 time = trailRenderer.time,
                 startWidth = trailRenderer.startWidth,
                 endWidth = trailRenderer.endWidth,
@@ -194,7 +195,7 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 message = $"Modified {modifiedProperties.Count} property(ies) on TrailRenderer.",
                 gameObject = trailRenderer.name,
-                instanceID = trailRenderer.gameObject.GetInstanceID(),
+                instanceID = trailRenderer.gameObject.GetStableId(),
                 modifiedProperties
             };
         }
@@ -218,7 +219,7 @@ namespace UnityMCP.Editor.Tools.VFX
                 success = true,
                 message = $"Trail cleared on '{trailRenderer.name}'.",
                 gameObject = trailRenderer.name,
-                instanceID = trailRenderer.gameObject.GetInstanceID(),
+                instanceID = trailRenderer.gameObject.GetStableId(),
                 previousPositionCount,
                 currentPositionCount = trailRenderer.positionCount
             };

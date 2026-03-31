@@ -13,9 +13,7 @@ using UnityEngine.InputSystem.UI;
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
 using UnityMCP.Editor.Services;
-
-
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Tools
 {
@@ -406,7 +404,7 @@ namespace UnityMCP.Editor.Tools
                 if (applied)
                 {
                     EditorUtility.SetDirty(go);
-                    results.Add(new { target = targetStr, success = true, instance_id = go.GetInstanceID(), name = go.name });
+                    results.Add(new { target = targetStr, success = true, instance_id = go.GetStableId(), name = go.name });
                     successCount++;
                 }
                 else
@@ -570,7 +568,7 @@ namespace UnityMCP.Editor.Tools
             // Add to manifest
             manifest.Add(new
             {
-                instance_id = go.GetInstanceID(),
+                instance_id = go.GetStableId(),
                 name = go.name,
                 element_type = type,
                 depth
@@ -1357,7 +1355,7 @@ namespace UnityMCP.Editor.Tools
             // Try instance ID first
             if (int.TryParse(target, out int instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = EntityIdCompat.ResolveObject(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     return gameObject;
