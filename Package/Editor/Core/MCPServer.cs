@@ -222,7 +222,7 @@ COORDINATION: Locks are per-resource (individual GameObjects, files, components)
 
             // Use clientInfo.name from the MCP initialize request as the display name
             string agentName = paramsToken?["clientInfo"]?["name"]?.ToString();
-            if (!string.IsNullOrEmpty(sessionId) && !string.IsNullOrEmpty(agentName))
+            if (!string.IsNullOrEmpty(sessionId) && !string.IsNullOrWhiteSpace(agentName))
                 SessionManager.SetSessionName(sessionId, agentName);
 
             var result = new JObject
