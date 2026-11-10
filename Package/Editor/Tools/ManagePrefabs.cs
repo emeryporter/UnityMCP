@@ -9,7 +9,6 @@ using UnityMCP.Editor.Core;
 using UnityMCP.Editor.Services;
 using UnityMCP.Editor.Utilities;
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
 
 namespace UnityMCP.Editor.Tools
 {
@@ -402,7 +401,7 @@ namespace UnityMCP.Editor.Tools
                         guid,
                         name = prefabAsset.name,
                         sourceGameObject = targetGameObject.name,
-                        sourceInstanceID = targetGameObject.GetInstanceID(),
+                        sourceInstanceID = ObjectIdUtilities.GetId(targetGameObject),
                         wasOverwritten = prefabExists
                     },
                     stageInfo = BuildCurrentStageInfo()
@@ -505,9 +504,9 @@ namespace UnityMCP.Editor.Tools
             Scene activeScene = prefabStage != null ? prefabStage.scene : EditorSceneManager.GetActiveScene();
 
             // Try instance ID first
-            if (int.TryParse(target, out int instanceId))
+            if (long.TryParse(target, out long instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = ObjectIdUtilities.FindById(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     return gameObject;

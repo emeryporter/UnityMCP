@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityMCP.Editor.Utilities;
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
 
 namespace UnityMCP.Editor.Tools
 {
@@ -65,20 +65,20 @@ namespace UnityMCP.Editor.Tools
             try
             {
                 var objectsToSelect = new List<UnityEngine.Object>();
-                var failedIds = new List<int>();
+                var failedIds = new List<long>();
                 var failedPaths = new List<string>();
 
                 if (instanceIds != null && instanceIds.Count > 0)
                 {
                     foreach (var idValue in instanceIds)
                     {
-                        if (!TryParseInstanceId(idValue, out int instanceId))
+                        if (!ObjectIdUtilities.TryParseId(idValue, out long instanceId))
                         {
                             Debug.LogWarning($"[SelectionTools] Invalid instance ID format: {idValue}");
                             continue;
                         }
 
-                        var resolvedObject = EditorUtility.InstanceIDToObject(instanceId);
+                        var resolvedObject = ObjectIdUtilities.FindById(instanceId);
                         if (resolvedObject != null)
                         {
                             objectsToSelect.Add(resolvedObject);
@@ -182,7 +182,7 @@ namespace UnityMCP.Editor.Tools
             var baseData = new Dictionary<string, object>
             {
                 { "name", selectedObject.name },
-                { "instanceId", selectedObject.GetInstanceID() },
+                { "instanceId", ObjectIdUtilities.GetId(selectedObject) },
                 { "type", selectedObject.GetType().Name }
             };
 
@@ -257,19 +257,6 @@ namespace UnityMCP.Editor.Tools
             {
                 return gameObject.name;
             }
-        }
-
-        private static bool TryParseInstanceId(object value, out int instanceId)
-        {
-            instanceId = 0;
-
-            if (value == null) return false;
-            if (value is int intValue) { instanceId = intValue; return true; }
-            if (value is long longValue) { instanceId = (int)longValue; return true; }
-            if (value is double doubleValue) { instanceId = (int)doubleValue; return true; }
-            if (value is string stringValue && int.TryParse(stringValue, out int parsedValue)) { instanceId = parsedValue; return true; }
-
-            return false;
         }
 
         #endregion

@@ -12,10 +12,11 @@ using UnityMCP.Editor.Core;
 using UnityMCP.Editor.Services;
 #if UNITY_MCP_TMP
 using TMPro;
+using UnityMCP.Editor.Utilities;
 #endif
 
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
+#pragma warning disable CS0618 // Object.FindObject(s)OfType is deprecated but still functional
 
 namespace UnityMCP.Editor.Tools
 {
@@ -129,7 +130,7 @@ namespace UnityMCP.Editor.Tools
             {
                 success = true,
                 canvas_name = canvas.gameObject.name,
-                instance_id = canvas.gameObject.GetInstanceID(),
+                instance_id = ObjectIdUtilities.GetId(canvas.gameObject),
                 max_depth = maxDepth,
                 include_style = includeStyle,
                 tree
@@ -164,7 +165,7 @@ namespace UnityMCP.Editor.Tools
             {
                 { "success", true },
                 { "name", go.name },
-                { "instance_id", go.GetInstanceID() },
+                { "instance_id", ObjectIdUtilities.GetId(go) },
                 { "active", go.activeSelf },
                 { "active_in_hierarchy", go.activeInHierarchy },
                 { "element_type", elementType },
@@ -202,7 +203,7 @@ namespace UnityMCP.Editor.Tools
                 result["parent"] = new Dictionary<string, object>
                 {
                     { "name", go.transform.parent.gameObject.name },
-                    { "instance_id", go.transform.parent.gameObject.GetInstanceID() }
+                    { "instance_id", ObjectIdUtilities.GetId(go.transform.parent.gameObject) }
                 };
             }
 
@@ -336,7 +337,7 @@ namespace UnityMCP.Editor.Tools
                     var match = new Dictionary<string, object>
                     {
                         { "name", go.name },
-                        { "instance_id", go.GetInstanceID() },
+                        { "instance_id", ObjectIdUtilities.GetId(go) },
                         { "active", go.activeSelf },
                         { "element_type", detectedType },
                         { "canvas", canvas.gameObject.name },
@@ -418,7 +419,7 @@ namespace UnityMCP.Editor.Tools
                 canvasSummaries.Add(new Dictionary<string, object>
                 {
                     { "name", go.name },
-                    { "instance_id", go.GetInstanceID() },
+                    { "instance_id", ObjectIdUtilities.GetId(go) },
                     { "active", go.activeInHierarchy },
                     { "render_mode", canvas.renderMode.ToString() },
                     { "sort_order", canvas.sortingOrder },
@@ -449,7 +450,7 @@ namespace UnityMCP.Editor.Tools
             var node = new Dictionary<string, object>
             {
                 ["name"] = go.name,
-                ["instance_id"] = go.GetInstanceID(),
+                ["instance_id"] = ObjectIdUtilities.GetId(go),
                 ["active"] = go.activeSelf,
                 ["element_type"] = elementType
             };
@@ -842,9 +843,9 @@ namespace UnityMCP.Editor.Tools
             Scene activeScene = GetActiveScene();
 
             // Try instance ID first
-            if (int.TryParse(target, out int instanceId))
+            if (long.TryParse(target, out long instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = ObjectIdUtilities.FindById(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     return gameObject;

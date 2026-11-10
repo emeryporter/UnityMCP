@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityMCP.Editor.Utilities;
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
 
 namespace UnityMCP.Editor.Resources.Scene
 {
@@ -20,9 +20,9 @@ namespace UnityMCP.Editor.Resources.Scene
         /// <param name="instanceId">The instance ID of the GameObject.</param>
         /// <returns>Object containing GameObject details or error information.</returns>
         [MCPResource("scene://gameobject/{id}", "GameObject details by instance ID")]
-        public static object GetGameObject([MCPParam("id", "Instance ID of the GameObject")] int instanceId)
+        public static object GetGameObject([MCPParam("id", "Instance ID of the GameObject")] long instanceId)
         {
-            var unityObject = EditorUtility.InstanceIDToObject(instanceId);
+            var unityObject = ObjectIdUtilities.FindById(instanceId);
 
             if (unityObject == null)
             {
@@ -51,9 +51,9 @@ namespace UnityMCP.Editor.Resources.Scene
         /// <param name="instanceId">The instance ID of the GameObject.</param>
         /// <returns>Object containing component list or error information.</returns>
         [MCPResource("scene://gameobject/{id}/components", "List of components on a GameObject")]
-        public static object GetGameObjectComponents([MCPParam("id", "Instance ID of the GameObject")] int instanceId)
+        public static object GetGameObjectComponents([MCPParam("id", "Instance ID of the GameObject")] long instanceId)
         {
-            var unityObject = EditorUtility.InstanceIDToObject(instanceId);
+            var unityObject = ObjectIdUtilities.FindById(instanceId);
 
             if (unityObject == null)
             {
@@ -93,7 +93,7 @@ namespace UnityMCP.Editor.Resources.Scene
                 {
                     type = component.GetType().Name,
                     fullType = component.GetType().FullName,
-                    instanceId = component.GetInstanceID(),
+                    instanceId = ObjectIdUtilities.GetId(component),
                     enabled = IsComponentEnabled(component),
                     isMissing = false
                 });
@@ -116,10 +116,10 @@ namespace UnityMCP.Editor.Resources.Scene
         /// <returns>Object containing component details or error information.</returns>
         [MCPResource("scene://gameobject/{id}/component/{type}", "Specific component details on a GameObject")]
         public static object GetGameObjectComponent(
-            [MCPParam("id", "Instance ID of the GameObject")] int instanceId,
+            [MCPParam("id", "Instance ID of the GameObject")] long instanceId,
             [MCPParam("type", "Type name of the component")] string componentType)
         {
-            var unityObject = EditorUtility.InstanceIDToObject(instanceId);
+            var unityObject = ObjectIdUtilities.FindById(instanceId);
 
             if (unityObject == null)
             {
@@ -192,7 +192,7 @@ namespace UnityMCP.Editor.Resources.Scene
                 .Select(c => new
                 {
                     type = c.GetType().Name,
-                    instanceId = c.GetInstanceID(),
+                    instanceId = ObjectIdUtilities.GetId(c),
                     enabled = IsComponentEnabled(c)
                 })
                 .ToArray();
@@ -204,7 +204,7 @@ namespace UnityMCP.Editor.Resources.Scene
                 childrenInfo.Add(new
                 {
                     name = child.name,
-                    instanceId = child.gameObject.GetInstanceID(),
+                    instanceId = ObjectIdUtilities.GetId(child.gameObject),
                     isActive = child.gameObject.activeSelf
                 });
             }
@@ -212,7 +212,7 @@ namespace UnityMCP.Editor.Resources.Scene
             return new
             {
                 name = gameObject.name,
-                instanceId = gameObject.GetInstanceID(),
+                instanceId = ObjectIdUtilities.GetId(gameObject),
                 tag = gameObject.tag,
                 layer = gameObject.layer,
                 layerName = LayerMask.LayerToName(gameObject.layer),
@@ -235,7 +235,7 @@ namespace UnityMCP.Editor.Resources.Scene
                     parent = transform.parent != null ? new
                     {
                         name = transform.parent.name,
-                        instanceId = transform.parent.gameObject.GetInstanceID()
+                        instanceId = ObjectIdUtilities.GetId(transform.parent.gameObject)
                     } : null,
                     childCount = transform.childCount,
                     children = childrenInfo.ToArray(),
@@ -281,11 +281,11 @@ namespace UnityMCP.Editor.Resources.Scene
             {
                 type = componentType.Name,
                 fullType = componentType.FullName,
-                instanceId = component.GetInstanceID(),
+                instanceId = ObjectIdUtilities.GetId(component),
                 gameObject = new
                 {
                     name = gameObject.name,
-                    instanceId = gameObject.GetInstanceID()
+                    instanceId = ObjectIdUtilities.GetId(gameObject)
                 },
                 enabled = IsComponentEnabled(component),
                 serializedProperties = properties,
@@ -317,7 +317,7 @@ namespace UnityMCP.Editor.Resources.Scene
                     {
                         name = objRef.name,
                         type = objRef.GetType().Name,
-                        instanceId = objRef.GetInstanceID()
+                        instanceId = ObjectIdUtilities.GetId(objRef)
                     } : null;
                 case SerializedPropertyType.LayerMask:
                     return property.intValue;
@@ -390,7 +390,7 @@ namespace UnityMCP.Editor.Resources.Scene
                 result["materialCount"] = renderer.sharedMaterials.Length;
                 result["materials"] = renderer.sharedMaterials
                     .Where(m => m != null)
-                    .Select(m => new { name = m.name, instanceId = m.GetInstanceID() })
+                    .Select(m => new { name = m.name, instanceId = ObjectIdUtilities.GetId(m) })
                     .ToArray();
             }
             else if (component is Collider collider)
@@ -434,7 +434,7 @@ namespace UnityMCP.Editor.Resources.Scene
             }
             else if (component is AudioSource audioSource)
             {
-                result["clip"] = audioSource.clip != null ? new { name = audioSource.clip.name, instanceId = audioSource.clip.GetInstanceID() } : null;
+                result["clip"] = audioSource.clip != null ? new { name = audioSource.clip.name, instanceId = ObjectIdUtilities.GetId(audioSource.clip) } : null;
                 result["volume"] = audioSource.volume;
                 result["pitch"] = audioSource.pitch;
                 result["loop"] = audioSource.loop;

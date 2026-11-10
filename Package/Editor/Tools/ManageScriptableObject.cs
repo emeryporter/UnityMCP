@@ -727,8 +727,8 @@ namespace UnityMCP.Editor.Tools
                     else
                     {
                         // Raw instance ID (int/long from JSON)
-                        int instanceId = Convert.ToInt32(value);
-                        objectToAssign = EditorUtility.InstanceIDToObject(instanceId);
+                        long instanceId = Convert.ToInt64(value);
+                        objectToAssign = ObjectIdUtilities.FindById(instanceId);
                     }
                     property.objectReferenceValue = objectToAssign;
                     if (objectToAssign != null && property.objectReferenceValue != objectToAssign)
@@ -1484,7 +1484,7 @@ namespace UnityMCP.Editor.Tools
                     {
                         name = obj.name,
                         type = obj.GetType().Name,
-                        instanceId = obj.GetInstanceID(),
+                        instanceId = ObjectIdUtilities.GetId(obj),
                         assetPath = string.IsNullOrEmpty(assetPath) ? null : assetPath
                     };
 
