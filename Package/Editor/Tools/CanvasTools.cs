@@ -12,9 +12,10 @@ using UnityEngine.InputSystem.UI;
 #endif
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
+using UnityMCP.Editor.Utilities;
 
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
+#pragma warning disable CS0618 // Object.FindObject(s)OfType is deprecated but still functional
 
 namespace UnityMCP.Editor.Tools
 {
@@ -170,7 +171,7 @@ namespace UnityMCP.Editor.Tools
                 message = createdEventSystem
                     ? $"Canvas '{name}' created with EventSystem."
                     : $"Canvas '{name}' created (EventSystem already exists).",
-                instance_id = canvasGO.GetInstanceID(),
+                instance_id = ObjectIdUtilities.GetId(canvasGO),
                 name = canvasGO.name,
                 render_mode = canvas.renderMode.ToString(),
                 scaler_mode = scaler.uiScaleMode.ToString(),
@@ -287,7 +288,7 @@ namespace UnityMCP.Editor.Tools
                 message = changes.Count > 0
                     ? $"Canvas '{targetGO.name}' configured: {string.Join(", ", changes)}."
                     : $"No changes applied to Canvas '{targetGO.name}'.",
-                instance_id = targetGO.GetInstanceID(),
+                instance_id = ObjectIdUtilities.GetId(targetGO),
                 name = targetGO.name,
                 changes
             };
@@ -307,7 +308,7 @@ namespace UnityMCP.Editor.Tools
 
                 var info = new Dictionary<string, object>
                 {
-                    { "instance_id", go.GetInstanceID() },
+                    { "instance_id", ObjectIdUtilities.GetId(go) },
                     { "name", go.name },
                     { "active", go.activeInHierarchy },
                     { "render_mode", canvas.renderMode.ToString() },
@@ -371,7 +372,7 @@ namespace UnityMCP.Editor.Tools
             }
 
             string canvasName = targetGO.name;
-            int canvasInstanceId = targetGO.GetInstanceID();
+            long canvasInstanceId = ObjectIdUtilities.GetId(targetGO);
             Undo.DestroyObjectImmediate(targetGO);
 
             bool deletedEventSystem = false;
@@ -460,9 +461,9 @@ namespace UnityMCP.Editor.Tools
             Scene activeScene = GetActiveScene();
 
             // Try instance ID first
-            if (int.TryParse(target, out int instanceId))
+            if (long.TryParse(target, out long instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = ObjectIdUtilities.FindById(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     return gameObject;

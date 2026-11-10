@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Tools
 {
@@ -813,7 +814,7 @@ namespace UnityMCP.Editor.Tools
                             name = obj.name,
                             type = obj.GetType().Name,
                             assetPath = string.IsNullOrEmpty(assetPath) ? null : assetPath,
-                            instanceId = obj.GetInstanceID()
+                            instanceId = ObjectIdUtilities.GetId(obj)
                         };
                     }
                     return new
@@ -1238,9 +1239,9 @@ namespace UnityMCP.Editor.Tools
 
                     // Strategy 1: Try as instance ID (integer)
                     // Scene objects typically have negative instance IDs
-                    if (TryConvertToInt(value, out int instanceId))
+                    if (ObjectIdUtilities.TryParseId(value, out long instanceId))
                     {
-                        newObj = EditorUtility.EntityIdToObject(instanceId);
+                        newObj = ObjectIdUtilities.FindById(instanceId);
                         if (newObj != null)
                         {
                             resolvedSource = $"instanceId:{instanceId}";
@@ -1328,7 +1329,7 @@ namespace UnityMCP.Editor.Tools
                         {
                             name = newObj.name,
                             type = newObj.GetType().Name,
-                            instanceId = newObj.GetInstanceID(),
+                            instanceId = ObjectIdUtilities.GetId(newObj),
                             isSceneObject,
                             assetPath = isSceneObject ? null : newAssetPath
                         },

@@ -9,9 +9,10 @@ using UnityEngine.SceneManagement;
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
 using UnityMCP.Editor.Services;
+using UnityMCP.Editor.Utilities;
 
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
+#pragma warning disable CS0618 // Object.FindObject(s)OfType is deprecated but still functional
 
 namespace UnityMCP.Editor.Tools
 {
@@ -328,7 +329,7 @@ namespace UnityMCP.Editor.Tools
             {
                 { "success", true },
                 { "message", $"UI element '{name}' ({elementType}) created successfully." },
-                { "instance_id", go.GetInstanceID() },
+                { "instance_id", ObjectIdUtilities.GetId(go) },
                 { "name", go.name },
                 { "element_type", elementType },
                 { "parent", parentTransform != null ? parentTransform.name : null },
@@ -492,7 +493,7 @@ namespace UnityMCP.Editor.Tools
                 {
                     success = true,
                     message = $"No modifications applied to UI element '{go.name}'.",
-                    instance_id = go.GetInstanceID(),
+                    instance_id = ObjectIdUtilities.GetId(go),
                     name = go.name
                 };
             }
@@ -503,7 +504,7 @@ namespace UnityMCP.Editor.Tools
             {
                 { "success", true },
                 { "message", $"UI element '{go.name}' modified successfully." },
-                { "instance_id", go.GetInstanceID() },
+                { "instance_id", ObjectIdUtilities.GetId(go) },
                 { "name", go.name },
                 { "changes", changes },
                 { "position", new { x = rt.anchoredPosition.x, y = rt.anchoredPosition.y } },
@@ -551,7 +552,7 @@ namespace UnityMCP.Editor.Tools
             }
 
             string elementName = go.name;
-            int instanceId = go.GetInstanceID();
+            long instanceId = ObjectIdUtilities.GetId(go);
             int childCount = go.transform.childCount;
 
             Undo.DestroyObjectImmediate(go);
@@ -648,9 +649,9 @@ namespace UnityMCP.Editor.Tools
             {
                 success = true,
                 message = $"Duplicated '{sourceGO.name}' as '{duplicate.name}'.",
-                instance_id = duplicate.GetInstanceID(),
+                instance_id = ObjectIdUtilities.GetId(duplicate),
                 name = duplicate.name,
-                original_instance_id = sourceGO.GetInstanceID(),
+                original_instance_id = ObjectIdUtilities.GetId(sourceGO),
                 original_name = sourceGO.name,
                 parent = parentTransform != null ? parentTransform.name : null,
                 position = new { x = rt.anchoredPosition.x, y = rt.anchoredPosition.y },
@@ -737,7 +738,7 @@ namespace UnityMCP.Editor.Tools
                 message = oldIndex != newIndex
                     ? $"UI element '{go.name}' moved from index {oldIndex} to {newIndex}."
                     : $"UI element '{go.name}' is already at index {newIndex}.",
-                instance_id = go.GetInstanceID(),
+                instance_id = ObjectIdUtilities.GetId(go),
                 name = go.name,
                 old_sibling_index = oldIndex,
                 new_sibling_index = newIndex,
@@ -827,7 +828,7 @@ namespace UnityMCP.Editor.Tools
             {
                 { "success", true },
                 { "message", $"Effect '{effectType}' added to '{go.name}'." },
-                { "instance_id", go.GetInstanceID() },
+                { "instance_id", ObjectIdUtilities.GetId(go) },
                 { "name", go.name },
                 { "effect_type", effectType }
             };
@@ -1014,9 +1015,9 @@ namespace UnityMCP.Editor.Tools
             Scene activeScene = GetActiveScene();
 
             // Try instance ID first
-            if (int.TryParse(target, out int instanceId))
+            if (long.TryParse(target, out long instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = ObjectIdUtilities.FindById(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     return gameObject;

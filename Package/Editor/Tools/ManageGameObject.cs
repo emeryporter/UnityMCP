@@ -9,9 +9,9 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
+using UnityMCP.Editor.Utilities;
 
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
 
 namespace UnityMCP.Editor.Tools
 {
@@ -546,7 +546,7 @@ namespace UnityMCP.Editor.Tools
                 if (targetGameObject != null)
                 {
                     string gameObjectName = targetGameObject.name;
-                    int instanceId = targetGameObject.GetInstanceID();
+                    long instanceId = ObjectIdUtilities.GetId(targetGameObject);
                     Undo.DestroyObjectImmediate(targetGameObject);
                     deletedObjects.Add(new { name = gameObjectName, instanceID = instanceId });
                 }
@@ -651,7 +651,7 @@ namespace UnityMCP.Editor.Tools
                 success = true,
                 message = $"Duplicated '{sourceGameObject.name}' as '{duplicatedGameObject.name}'.",
                 originalName = sourceGameObject.name,
-                originalId = sourceGameObject.GetInstanceID(),
+                originalId = ObjectIdUtilities.GetId(sourceGameObject),
                 duplicatedObject = BuildGameObjectData(duplicatedGameObject)
             };
         }
@@ -760,9 +760,9 @@ namespace UnityMCP.Editor.Tools
             Scene activeScene = GetActiveScene();
 
             // Try instance ID first
-            if (int.TryParse(target, out int instanceId))
+            if (long.TryParse(target, out long instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = ObjectIdUtilities.FindById(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     return gameObject;
@@ -827,9 +827,9 @@ namespace UnityMCP.Editor.Tools
             }
 
             // Try instance ID first (single result)
-            if (int.TryParse(target, out int instanceId))
+            if (long.TryParse(target, out long instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = ObjectIdUtilities.FindById(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     results.Add(gameObject);
@@ -1471,7 +1471,7 @@ namespace UnityMCP.Editor.Tools
             return new
             {
                 name = gameObject.name,
-                instanceID = gameObject.GetInstanceID(),
+                instanceID = ObjectIdUtilities.GetId(gameObject),
                 activeSelf = gameObject.activeSelf,
                 activeInHierarchy = gameObject.activeInHierarchy,
                 tag = gameObject.tag,

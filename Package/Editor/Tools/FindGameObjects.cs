@@ -7,8 +7,9 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
+using UnityMCP.Editor.Utilities;
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
+#pragma warning disable CS0618 // Object.FindObject(s)OfType is deprecated but still functional
 
 namespace UnityMCP.Editor.Tools
 {
@@ -93,12 +94,12 @@ namespace UnityMCP.Editor.Tools
         {
             var results = new List<GameObject>();
 
-            if (!int.TryParse(searchTerm, out int instanceId))
+            if (!long.TryParse(searchTerm, out long instanceId))
             {
                 throw MCPException.InvalidParams($"Invalid instance ID: '{searchTerm}'. Must be an integer.");
             }
 
-            var obj = EditorUtility.InstanceIDToObject(instanceId);
+            var obj = ObjectIdUtilities.FindById(instanceId);
 
             if (obj is GameObject gameObject)
             {
@@ -469,13 +470,13 @@ namespace UnityMCP.Editor.Tools
             int endIndex = Mathf.Min(totalCount, cursor + pageSize);
             int actualPageSize = endIndex - cursor;
 
-            var instanceIds = new List<int>(actualPageSize);
+            var instanceIds = new List<long>(actualPageSize);
             for (int i = cursor; i < endIndex; i++)
             {
                 var gameObject = results[i];
                 if (gameObject != null)
                 {
-                    instanceIds.Add(gameObject.GetInstanceID());
+                    instanceIds.Add(ObjectIdUtilities.GetId(gameObject));
                 }
             }
 

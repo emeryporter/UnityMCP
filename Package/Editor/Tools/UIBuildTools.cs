@@ -13,9 +13,10 @@ using UnityEngine.InputSystem.UI;
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
 using UnityMCP.Editor.Services;
+using UnityMCP.Editor.Utilities;
 
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
+#pragma warning disable CS0618 // Object.FindObject(s)OfType is deprecated but still functional
 
 namespace UnityMCP.Editor.Tools
 {
@@ -406,7 +407,7 @@ namespace UnityMCP.Editor.Tools
                 if (applied)
                 {
                     EditorUtility.SetDirty(go);
-                    results.Add(new { target = targetStr, success = true, instance_id = go.GetInstanceID(), name = go.name });
+                    results.Add(new { target = targetStr, success = true, instance_id = ObjectIdUtilities.GetId(go), name = go.name });
                     successCount++;
                 }
                 else
@@ -570,7 +571,7 @@ namespace UnityMCP.Editor.Tools
             // Add to manifest
             manifest.Add(new
             {
-                instance_id = go.GetInstanceID(),
+                instance_id = ObjectIdUtilities.GetId(go),
                 name = go.name,
                 element_type = type,
                 depth
@@ -1355,9 +1356,9 @@ namespace UnityMCP.Editor.Tools
             Scene activeScene = GetActiveScene();
 
             // Try instance ID first
-            if (int.TryParse(target, out int instanceId))
+            if (long.TryParse(target, out long instanceId))
             {
-                var obj = EditorUtility.InstanceIDToObject(instanceId);
+                var obj = ObjectIdUtilities.FindById(instanceId);
                 if (obj is GameObject gameObject)
                 {
                     return gameObject;

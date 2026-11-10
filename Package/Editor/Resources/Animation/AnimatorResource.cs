@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityMCP.Editor.Utilities;
 
 namespace UnityMCP.Editor.Resources.Animation
 {
@@ -85,7 +86,7 @@ namespace UnityMCP.Editor.Resources.Animation
             {
                 name = animatorController.name,
                 assetPath = assetPath,
-                instanceId = animatorController.GetInstanceID(),
+                instanceId = ObjectIdUtilities.GetId(animatorController),
                 layerCount = animatorController.layers.Length,
                 layers = layers.ToArray(),
                 parameterCount = animatorController.parameters.Length,

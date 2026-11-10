@@ -5,8 +5,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityMCP.Editor;
 using UnityMCP.Editor.Core;
+using UnityMCP.Editor.Utilities;
 
-#pragma warning disable CS0618 // EditorUtility.InstanceIDToObject is deprecated but still functional
 
 namespace UnityMCP.Editor.Tools
 {
@@ -81,7 +81,7 @@ namespace UnityMCP.Editor.Tools
                     target = new
                     {
                         name = targetGameObject.name,
-                        instanceID = targetGameObject.GetInstanceID(),
+                        instanceID = ObjectIdUtilities.GetId(targetGameObject),
                         path = gameObjectPath
                     },
                     locked = lockView
@@ -116,9 +116,9 @@ namespace UnityMCP.Editor.Tools
             }
 
             // Try to parse as instance ID first
-            if (int.TryParse(target, out int instanceId))
+            if (long.TryParse(target, out long instanceId))
             {
-                var resolvedObject = EditorUtility.InstanceIDToObject(instanceId);
+                var resolvedObject = ObjectIdUtilities.FindById(instanceId);
                 if (resolvedObject is GameObject gameObject)
                 {
                     return gameObject;
