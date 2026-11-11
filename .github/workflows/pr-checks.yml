@@ -1,0 +1,35 @@
+name: PR Checks
+
+# Runs on fork PRs too; needs no secrets.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  no-prebuilt-binaries:
+    # Required status check in the "Protect Main" ruleset; keep this name stable.
+    name: No prebuilt binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check for binaries
+        run: bash .github/scripts/check-no-binaries.sh "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
+
+  script-tests:
+    name: Script tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run release script tests
+        run: |
+          for test_script in .github/scripts/tests/test-*.sh; do
+            echo "== $test_script"
+            bash "$test_script"
+          done
