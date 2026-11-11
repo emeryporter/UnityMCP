@@ -33,5 +33,6 @@ fi
 echo "Copying to Package/Plugins folder..."
 mkdir -p "../Package/Plugins/macOS/"
 cp UnityMCPProxy.bundle ../Package/Plugins/macOS/
+cp ../release-meta/Plugins/macOS/UnityMCPProxy.bundle.meta ../Package/Plugins/macOS/
 
 echo "Build successful: UnityMCPProxy.bundle"

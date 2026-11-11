@@ -41,6 +41,11 @@ if errorlevel 1 (
     echo ERROR: Failed to copy DLL to Package/Plugins folder
     exit /b 1
 )
+copy /Y "..\release-meta\Plugins\Windows\x86_64\UnityMCPProxy.dll.meta" "..\Package\Plugins\Windows\x86_64\"
+if errorlevel 1 (
+    echo ERROR: Failed to copy UnityMCPProxy.dll.meta from release-meta
+    exit /b 1
+)
 
 :: Clean up intermediate files
 if exist UnityMCPProxy.exp del UnityMCPProxy.exp
