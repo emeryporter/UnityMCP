@@ -26,41 +26,20 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
+      # Full history + tags: version selection reads release tag subjects.
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           fetch-tags: true
 
+      # Reuses the version if this commit was already released (so re-runs resume, never re-publish);
+      # otherwise the higher of (latest tag + 1 patch) and package.json, for manual minor/major bumps.
       - name: Generate version
         id: version
         run: |
-          # Get latest semver tag (x.y.z format)
-          git fetch --tags
-          LATEST=$(git tag -l --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
-
-          if [ -z "$LATEST" ]; then
-            # No tags exist - let package.json decide the first version
-            AUTO_VERSION="0.0.0"
-          else
-            # Increment patch version from latest tag
-            MAJOR=$(echo "$LATEST" | cut -d. -f1)
-            MINOR=$(echo "$LATEST" | cut -d. -f2)
-            PATCH=$(echo "$LATEST" | cut -d. -f3)
-            AUTO_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-          fi
-
-          # Get version from package.json
-          PKG_VERSION=$(grep '"version"' Package/package.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
-
-          # Use the higher of auto-incremented or package.json version
-          # This allows manual minor/major bumps via package.json while
-          # still auto-incrementing patches for regular releases
-          VERSION=$(printf '%s\n%s' "$AUTO_VERSION" "$PKG_VERSION" | sort -V | tail -n1)
-
-          echo "Latest tag: $LATEST"
-          echo "Auto-increment version: $AUTO_VERSION"
-          echo "Package.json version: $PKG_VERSION"
+          VERSION=$(bash .github/scripts/select-version.sh "$(git rev-parse --short=7 HEAD)" Package/package.json)
           echo "Selected version: $VERSION"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   build-windows:
     needs: [version]
