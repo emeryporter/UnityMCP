@@ -4,14 +4,7 @@ docs/
 
 # Native plugins are built by CI and published on the `latest` branch / version tags.
 # Get them locally with Proxy~/fetch_plugins.sh or a Proxy~ build script.
+# (Their .meta files are tracked; those scripts restore them if Unity deleted them.)
 Package/Plugins/Windows/x86_64/UnityMCPProxy.dll
-Package/Plugins/Windows/x86_64/UnityMCPProxy.dll.meta
 Package/Plugins/macOS/UnityMCPProxy.bundle
-Package/Plugins/macOS/UnityMCPProxy.bundle.meta
 Package/Plugins/Linux/x86_64/libUnityMCPProxy.so
-Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta
-# Added to the published package by CI (their .meta files live in release-meta/).
-Package/README.md
-Package/README.md.meta
-Package/LICENSE
-Package/LICENSE.meta

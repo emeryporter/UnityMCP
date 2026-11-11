@@ -30,7 +30,7 @@ bash Proxy~/fetch_plugins.sh 3.0.0    # a specific 3.x release
 
 ## Build Instructions
 
-Each script compiles the plugin and copies it, plus its `.meta` file from `../release-meta/`, into `../Package/Plugins/`:
+Each script compiles the plugin and copies it into `../Package/Plugins/`. The plugin's `.meta` file is tracked in git next to it; if Unity deleted it (Unity removes a `.meta` whose plugin is missing), the script restores it.
 
 | Platform | Script | Toolchain | Output |
 |---|---|---|---|

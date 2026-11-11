@@ -24,6 +24,7 @@ The plugins you fetch or build are gitignored, so they never show up as changes.
 
 - **Don't commit native binaries** (`.dll`, `.bundle`, `.so`, `.dylib`). CI builds them from `Proxy~/` for every release.
 - **Let Unity create `.meta` files.** When you add a file under `Package/`, open the project in Unity so it generates the `.meta`, then commit both. Don't write `.meta` files by hand.
+- **Don't commit deleted plugin `.meta` files.** If you open the project before getting the plugins, Unity deletes the `.meta` files in `Package/Plugins/`. Running `fetch_plugins.sh` (or a build script) restores them, and the PR check blocks committing their deletion.
 - **Shell scripts use LF line endings.** `.gitattributes` enforces this; keep it in mind if your editor converts line endings.
 
 ## Pull request checks

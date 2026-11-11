@@ -46,8 +46,8 @@ for index in "${!binary_sources[@]}"; do
     cp "$artifacts_dir/${binary_sources[$index]}" "$destination"
 done
 
-cp -R "$src_dir/release-meta/." "$dist_dir/"
-cp "$src_dir/README.md" "$src_dir/LICENSE" "$dist_dir/"
+# Plugin .meta files, the README stub and LICENSE.meta come from Package/. Refresh LICENSE from the root copy.
+cp "$src_dir/LICENSE" "$dist_dir/LICENSE"
 
 sed -i 's/"version": "[^"]*"/"version": "'"$version"'"/' "$dist_dir/package.json"
 sed -i 's/const string ServerVersion = "[^"]*"/const string ServerVersion = "'"$version"'"/' "$dist_dir/Editor/Core/MCPServer.cs"

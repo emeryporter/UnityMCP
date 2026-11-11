@@ -32,6 +32,7 @@ fi
 echo "Copying to Package/Plugins folder..."
 mkdir -p "../Package/Plugins/Linux/x86_64/"
 cp libUnityMCPProxy.so ../Package/Plugins/Linux/x86_64/
-cp ../release-meta/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta ../Package/Plugins/Linux/x86_64/
+# The .meta is tracked; restore it if Unity deleted it while the plugin was missing.
+[ -f ../Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta ] || git -C .. checkout -- Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta
 
 echo "Build successful: libUnityMCPProxy.so"

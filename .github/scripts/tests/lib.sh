@@ -30,22 +30,24 @@ assert_same_content() {
     cmp -s "$1" "$2" || fail "expected '$1' to equal '$2'"
 }
 
-# Creates a minimal source checkout (Package/, root README/LICENSE, release-meta/) in $1.
+# Creates a minimal source checkout in $1: Package/ (with plugin .meta files, stub README and LICENSE,
+# but no binaries) plus the root README/LICENSE.
 make_fixture_src() {
     local src_dir="$1"
-    mkdir -p "$src_dir/Package/Editor/Core" "$src_dir/release-meta/Plugins/Windows/x86_64" \
-        "$src_dir/release-meta/Plugins/macOS" "$src_dir/release-meta/Plugins/Linux/x86_64"
+    mkdir -p "$src_dir/Package/Editor/Core" "$src_dir/Package/Plugins/Windows/x86_64" \
+        "$src_dir/Package/Plugins/macOS" "$src_dir/Package/Plugins/Linux/x86_64"
     printf '{\n  "name": "com.emeryporter.unitymcp",\n  "version": "0.0.1"\n}\n' > "$src_dir/Package/package.json"
     echo "class Foo {}" > "$src_dir/Package/Editor/Foo.cs"
     echo '        internal const string ServerVersion = "0.0.1";' > "$src_dir/Package/Editor/Core/MCPServer.cs"
-    echo "package readme" > "$src_dir/Package/README.md"
+    echo "package readme stub" > "$src_dir/Package/README.md"
+    echo "meta readme" > "$src_dir/Package/README.md.meta"
+    echo "stale package license" > "$src_dir/Package/LICENSE"
+    echo "meta license" > "$src_dir/Package/LICENSE.meta"
+    echo "meta dll" > "$src_dir/Package/Plugins/Windows/x86_64/UnityMCPProxy.dll.meta"
+    echo "meta bundle" > "$src_dir/Package/Plugins/macOS/UnityMCPProxy.bundle.meta"
+    echo "meta so" > "$src_dir/Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta"
     echo "root readme" > "$src_dir/README.md"
     echo "root license" > "$src_dir/LICENSE"
-    echo "meta dll" > "$src_dir/release-meta/Plugins/Windows/x86_64/UnityMCPProxy.dll.meta"
-    echo "meta bundle" > "$src_dir/release-meta/Plugins/macOS/UnityMCPProxy.bundle.meta"
-    echo "meta so" > "$src_dir/release-meta/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta"
-    echo "meta readme" > "$src_dir/release-meta/README.md.meta"
-    echo "meta license" > "$src_dir/release-meta/LICENSE.meta"
 }
 
 # Creates CI-style artifact folders with distinct fake binaries in $1.
