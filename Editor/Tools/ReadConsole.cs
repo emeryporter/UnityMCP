@@ -1,0 +1,633 @@
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using UnityEditor;
+using UnityEngine;
+using UnityMCP.Editor;
+using UnityMCP.Editor.Core;
+
+namespace UnityMCP.Editor.Tools
+{
+    /// <summary>
+    /// Provides access to Unity Console log entries using reflection to access internal APIs.
+    /// </summary>
+    [MCPTool("read_console", "Reads Unity Console log entries with filtering and pagination. Check after refresh_unity or script changes to catch compile errors. Use types='error,warning' to filter for problems.", Category = "Console")]
+    public static class ReadConsole
+    {
+        #region Constants
+
+        private const int DefaultPageSize = 50;
+        private const int MaxPageSize = 500;
+        private const int DefaultMaxMessageLength = 500;
+        private const int MaxStacktraceLength = 2000;
+
+        // Mode bit flags for log entry types (based on Unity's internal ConsoleFlags)
+        // These values are determined by Unity's internal LogEntry.mode field
+        private const int ModeBitError = 1 << 0;              // 1 - Error
+        private const int ModeBitAssert = 1 << 1;             // 2 - Assert
+        private const int ModeBitLog = 1 << 2;                // 4 - Debug.Log (regular log/info)
+        private const int ModeBitFatal = 1 << 4;              // 16 - Fatal errors
+        private const int ModeBitAssetImportError = 1 << 6;   // 64 - Asset import errors
+        private const int ModeBitAssetImportWarning = 1 << 7; // 128 - Asset import warnings
+        private const int ModeBitScriptingError = 1 << 8;     // 256 - Runtime script errors
+        private const int ModeBitScriptingWarning = 1 << 9;   // 512 - Runtime script warnings (Debug.LogWarning)
+        private const int ModeBitScriptingLog = 1 << 10;      // 1024 - Runtime script logs (Debug.Log from scripts)
+        private const int ModeBitScriptCompileError = 1 << 11;   // 2048 - Compilation errors
+        private const int ModeBitScriptCompileWarning = 1 << 12; // 4096 - Compilation warnings
+        private const int ModeBitScriptingException = 1 << 17;   // 131072 - Runtime exceptions
+
+        // Combined masks for log type categories
+        private const int ErrorMask = ModeBitError | ModeBitAssert | ModeBitFatal |
+                                      ModeBitAssetImportError | ModeBitScriptingError |
+                                      ModeBitScriptCompileError | ModeBitScriptingException;
+        private const int WarningMask = ModeBitAssetImportWarning | ModeBitScriptingWarning | ModeBitScriptCompileWarning;
+        private const int LogMask = ModeBitLog | ModeBitScriptingLog;
+
+        #endregion
+
+        #region Reflection Setup
+
+        private static Type logEntriesType;
+        private static Type logEntryType;
+
+        private static MethodInfo startGettingEntriesMethod;
+        private static MethodInfo endGettingEntriesMethod;
+        private static MethodInfo clearMethod;
+        private static MethodInfo getCountMethod;
+        private static MethodInfo getEntryInternalMethod;
+
+        private static FieldInfo modeField;
+        private static FieldInfo messageField;
+        private static FieldInfo fileField;
+        private static FieldInfo lineField;
+        private static FieldInfo instanceIdField;
+
+        private static bool isReflectionInitialized;
+        private static string reflectionError;
+
+        /// <summary>
+        /// Initializes reflection for accessing internal Unity Console APIs.
+        /// </summary>
+        static ReadConsole()
+        {
+            InitializeReflection();
+        }
+
+        private static void InitializeReflection()
+        {
+            try
+            {
+                // Get LogEntries type
+                logEntriesType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.LogEntries");
+                if (logEntriesType == null)
+                {
+                    reflectionError = "Could not find UnityEditor.LogEntries type.";
+                    return;
+                }
+
+                // Get LogEntry type
+                logEntryType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.LogEntry");
+                if (logEntryType == null)
+                {
+                    reflectionError = "Could not find UnityEditor.LogEntry type.";
+                    return;
+                }
+
+                // Get static methods on LogEntries
+                startGettingEntriesMethod = logEntriesType.GetMethod("StartGettingEntries", BindingFlags.Static | BindingFlags.Public);
+                endGettingEntriesMethod = logEntriesType.GetMethod("EndGettingEntries", BindingFlags.Static | BindingFlags.Public);
+                clearMethod = logEntriesType.GetMethod("Clear", BindingFlags.Static | BindingFlags.Public);
+                getCountMethod = logEntriesType.GetMethod("GetCount", BindingFlags.Static | BindingFlags.Public);
+                getEntryInternalMethod = logEntriesType.GetMethod("GetEntryInternal", BindingFlags.Static | BindingFlags.Public);
+
+                if (startGettingEntriesMethod == null || endGettingEntriesMethod == null ||
+                    clearMethod == null || getCountMethod == null || getEntryInternalMethod == null)
+                {
+                    reflectionError = "Could not find one or more required methods on LogEntries.";
+                    return;
+                }
+
+                // Get fields on LogEntry
+                modeField = logEntryType.GetField("mode", BindingFlags.Instance | BindingFlags.Public);
+                messageField = logEntryType.GetField("message", BindingFlags.Instance | BindingFlags.Public);
+                fileField = logEntryType.GetField("file", BindingFlags.Instance | BindingFlags.Public);
+                lineField = logEntryType.GetField("line", BindingFlags.Instance | BindingFlags.Public);
+                instanceIdField = logEntryType.GetField("instanceID", BindingFlags.Instance | BindingFlags.Public);
+
+                if (modeField == null || messageField == null)
+                {
+                    reflectionError = "Could not find required fields on LogEntry. Some fields may be missing in this Unity version.";
+                    return;
+                }
+
+                isReflectionInitialized = true;
+            }
+            catch (Exception exception)
+            {
+                reflectionError = $"Failed to initialize reflection: {exception.Message}";
+            }
+        }
+
+        #endregion
+
+        #region Actions
+
+        /// <summary>
+        /// Reads Unity Console log entries with filtering, pagination, deduplication, and message truncation.
+        /// </summary>
+        [MCPAction("get", Description = "Read console log entries with filtering and pagination", ReadOnlyHint = true)]
+        public static object Get(
+            [MCPParam("types", "Comma-separated log types to include: error, warning, log, all (default: error,warning)")] string types = "error,warning",
+            [MCPParam("count", "Maximum entries to return (non-paging mode, overrides page_size if set)")] int? count = null,
+            [MCPParam("page_size", "Entries per page (default: 50, max: 500)", Minimum = 1, Maximum = 500)] int pageSize = DefaultPageSize,
+            [MCPParam("cursor", "Starting index for pagination (default: 0)", Minimum = 0)] int cursor = 0,
+            [MCPParam("filter_text", "Text filter for messages (case-insensitive substring match)")] string filterText = null,
+            [MCPParam("format", "Output format: 'plain' or 'detailed' (default: plain)", Enum = new[] { "plain", "detailed" })] string format = "plain",
+            [MCPParam("include_stacktrace", "Include stack traces in output (default: false)")] bool includeStacktrace = false,
+            [MCPParam("deduplicate", "Collapse consecutive identical messages into one with a count (default: true)")] bool deduplicate = true,
+            [MCPParam("max_message_length", "Maximum message length before truncation (default: 500, 0 for unlimited)", Minimum = 0)] int maxMessageLength = DefaultMaxMessageLength)
+        {
+            if (!isReflectionInitialized)
+            {
+                return new
+                {
+                    success = false,
+                    error = $"Console API not available: {reflectionError}"
+                };
+            }
+
+            return GetEntries(types, count, pageSize, cursor, filterText, format, includeStacktrace, deduplicate, maxMessageLength);
+        }
+
+        /// <summary>
+        /// Clears the Unity Console.
+        /// </summary>
+        [MCPAction("clear", Description = "Clear all console log entries", DestructiveHint = true)]
+        public static object Clear()
+        {
+            if (!isReflectionInitialized)
+            {
+                return new
+                {
+                    success = false,
+                    error = $"Console API not available: {reflectionError}"
+                };
+            }
+
+            return ClearConsole();
+        }
+
+        #endregion
+
+        #region Action Implementations
+
+        /// <summary>
+        /// Gets console log entries with filtering, pagination, deduplication, and message truncation.
+        /// </summary>
+        private static object GetEntries(string types, int? count, int pageSize, int cursor, string filterText, string format, bool includeStacktrace, bool deduplicate, int maxMessageLength)
+        {
+            try
+            {
+                // Parse log types filter
+                int typeMask = ParseTypeMask(types);
+
+                // Resolve page size
+                int resolvedPageSize = count.HasValue
+                    ? Mathf.Clamp(count.Value, 1, MaxPageSize)
+                    : Mathf.Clamp(pageSize, 1, MaxPageSize);
+
+                int resolvedCursor = Mathf.Max(0, cursor);
+                int resolvedMaxMessageLength = maxMessageLength <= 0 ? int.MaxValue : maxMessageLength;
+
+                bool isDetailedFormat = (format ?? "plain").Equals("detailed", StringComparison.OrdinalIgnoreCase);
+
+                // Get entries from console
+                var entries = new List<object>();
+                int totalFilteredCount = 0;
+                int skippedCount = 0;
+                int totalConsoleCount = 0;
+                int deduplicatedCount = 0;
+
+                // For deduplication tracking
+                string previousMessageKey = null;
+                Dictionary<string, object> previousEntry = null;
+
+                // Start getting entries
+                startGettingEntriesMethod.Invoke(null, null);
+
+                try
+                {
+                    totalConsoleCount = (int)getCountMethod.Invoke(null, null);
+
+                    // Create a LogEntry instance to receive data
+                    object logEntry = Activator.CreateInstance(logEntryType);
+
+                    for (int i = 0; i < totalConsoleCount; i++)
+                    {
+                        // Get entry data
+                        getEntryInternalMethod.Invoke(null, new object[] { i, logEntry });
+
+                        int mode = (int)modeField.GetValue(logEntry);
+                        string message = (string)messageField.GetValue(logEntry);
+
+                        // Check type filter
+                        if (!MatchesTypeMask(mode, typeMask))
+                        {
+                            continue;
+                        }
+
+                        // Check text filter
+                        if (!string.IsNullOrEmpty(filterText))
+                        {
+                            if (message == null || message.IndexOf(filterText, StringComparison.OrdinalIgnoreCase) < 0)
+                            {
+                                continue;
+                            }
+                        }
+
+                        // This entry passes all filters
+                        totalFilteredCount++;
+
+                        // Handle pagination
+                        if (skippedCount < resolvedCursor)
+                        {
+                            skippedCount++;
+                            continue;
+                        }
+
+                        // Extract the message portion (excluding stacktrace) as the dedup key
+                        string messageForDedup = ExtractMessageForDedup(message);
+                        string logType = GetLogType(mode);
+                        string deduplicationKey = deduplicate ? $"{logType}:{messageForDedup}" : null;
+
+                        // Deduplication: if same message as previous, increment count instead of adding new entry
+                        if (deduplicate && previousEntry != null && deduplicationKey == previousMessageKey)
+                        {
+                            int currentCount = previousEntry.ContainsKey("count") ? (int)previousEntry["count"] : 1;
+                            previousEntry["count"] = currentCount + 1;
+                            deduplicatedCount++;
+                            continue;
+                        }
+
+                        // Check if we have enough entries
+                        if (entries.Count >= resolvedPageSize)
+                        {
+                            continue; // Keep counting for totalFilteredCount
+                        }
+
+                        // Build entry object
+                        var entryObject = BuildEntryObject(logEntry, mode, message, i, isDetailedFormat, includeStacktrace, resolvedMaxMessageLength);
+                        entries.Add(entryObject);
+
+                        // Track for deduplication
+                        if (deduplicate)
+                        {
+                            previousMessageKey = deduplicationKey;
+                            previousEntry = entryObject;
+                        }
+                    }
+                }
+                finally
+                {
+                    // Always end getting entries
+                    endGettingEntriesMethod.Invoke(null, null);
+                }
+
+                // Calculate pagination info
+                bool hasMore = (resolvedCursor + entries.Count + deduplicatedCount) < totalFilteredCount;
+                int? nextCursor = hasMore ? resolvedCursor + entries.Count + deduplicatedCount : (int?)null;
+
+                return new
+                {
+                    success = true,
+                    entries,
+                    pageSize = resolvedPageSize,
+                    cursor = resolvedCursor,
+                    nextCursor,
+                    totalCount = totalFilteredCount,
+                    totalConsoleCount,
+                    hasMore,
+                    deduplicated = deduplicatedCount > 0 ? deduplicatedCount : (int?)null
+                };
+            }
+            catch (Exception exception)
+            {
+                return new
+                {
+                    success = false,
+                    error = $"Error reading console entries: {exception.Message}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Clears the Unity Console.
+        /// </summary>
+        private static object ClearConsole()
+        {
+            try
+            {
+                clearMethod.Invoke(null, null);
+
+                return new
+                {
+                    success = true,
+                    message = "Console cleared successfully."
+                };
+            }
+            catch (Exception exception)
+            {
+                return new
+                {
+                    success = false,
+                    error = $"Error clearing console: {exception.Message}"
+                };
+            }
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Parses the types parameter into a bitmask for filtering.
+        /// </summary>
+        private static int ParseTypeMask(string types)
+        {
+            if (string.IsNullOrEmpty(types))
+            {
+                // Default to errors and warnings
+                return ErrorMask | WarningMask;
+            }
+
+            string[] typeArray = types.ToLowerInvariant().Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            int mask = 0;
+            foreach (string type in typeArray)
+            {
+                string trimmedType = type.Trim();
+                switch (trimmedType)
+                {
+                    case "all":
+                        return ErrorMask | WarningMask | LogMask;
+                    case "error":
+                    case "errors":
+                        mask |= ErrorMask;
+                        break;
+                    case "warning":
+                    case "warnings":
+                        mask |= WarningMask;
+                        break;
+                    case "log":
+                    case "logs":
+                        mask |= LogMask;
+                        break;
+                }
+            }
+
+            // If nothing was matched, default to errors and warnings
+            if (mask == 0)
+            {
+                mask = ErrorMask | WarningMask;
+            }
+
+            return mask;
+        }
+
+        /// <summary>
+        /// Checks if a log entry mode matches the type mask.
+        /// </summary>
+        private static bool MatchesTypeMask(int mode, int typeMask)
+        {
+            // Check if the entry's mode bits overlap with any of the allowed type bits
+            if ((typeMask & ErrorMask) != 0 && (mode & ErrorMask) != 0)
+            {
+                return true;
+            }
+            if ((typeMask & WarningMask) != 0 && (mode & WarningMask) != 0)
+            {
+                return true;
+            }
+            if ((typeMask & LogMask) != 0 && (mode & LogMask) != 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Determines the log type string from the mode bits.
+        /// </summary>
+        private static string GetLogType(int mode)
+        {
+            if ((mode & ErrorMask) != 0)
+            {
+                return "error";
+            }
+            if ((mode & WarningMask) != 0)
+            {
+                return "warning";
+            }
+            if ((mode & LogMask) != 0)
+            {
+                return "log";
+            }
+            return "unknown";
+        }
+
+        /// <summary>
+        /// Builds an entry object for the response with message truncation support.
+        /// </summary>
+        private static Dictionary<string, object> BuildEntryObject(object logEntry, int mode, string message, int index, bool detailed, bool includeStacktrace, int maxMessageLength)
+        {
+            string logType = GetLogType(mode);
+
+            // Extract message and stacktrace
+            string messageText = message ?? string.Empty;
+            string stacktrace = null;
+
+            // Unity combines message and stacktrace in the message field, separated by newline.
+            // We detect the stacktrace boundary by looking for stacktrace patterns rather than
+            // splitting on the first newline, since user messages can be multiline.
+            int stacktraceStart = FindStacktraceBoundary(messageText);
+            if (stacktraceStart >= 0)
+            {
+                stacktrace = messageText.Substring(stacktraceStart);
+                messageText = messageText.Substring(0, stacktraceStart).TrimEnd('\n', '\r');
+            }
+
+            // Truncate message if needed
+            bool messageTruncated = messageText.Length > maxMessageLength;
+            if (messageTruncated)
+            {
+                messageText = messageText.Substring(0, maxMessageLength) + "...";
+            }
+
+            // Truncate stacktrace if needed
+            if (includeStacktrace && stacktrace != null && stacktrace.Length > MaxStacktraceLength)
+            {
+                stacktrace = stacktrace.Substring(0, MaxStacktraceLength) + "\n... (truncated)";
+            }
+
+            if (detailed)
+            {
+                var entryObject = new Dictionary<string, object>
+                {
+                    { "index", index },
+                    { "type", logType },
+                    { "message", messageText }
+                };
+
+                // Add optional fields if available
+                if (fileField != null)
+                {
+                    string file = (string)fileField.GetValue(logEntry);
+                    if (!string.IsNullOrEmpty(file))
+                    {
+                        entryObject["file"] = file;
+                    }
+                }
+
+                if (lineField != null)
+                {
+                    int line = (int)lineField.GetValue(logEntry);
+                    if (line > 0)
+                    {
+                        entryObject["line"] = line;
+                    }
+                }
+
+                if (includeStacktrace && !string.IsNullOrEmpty(stacktrace))
+                {
+                    entryObject["stacktrace"] = stacktrace;
+                }
+
+                return entryObject;
+            }
+            else
+            {
+                // Plain format - simpler structure
+                var entryObject = new Dictionary<string, object>
+                {
+                    { "type", logType },
+                    { "message", messageText }
+                };
+
+                if (includeStacktrace && !string.IsNullOrEmpty(stacktrace))
+                {
+                    entryObject["stacktrace"] = stacktrace;
+                }
+
+                return entryObject;
+            }
+        }
+
+        /// <summary>
+        /// Extracts the message portion (excluding stacktrace) for use as a deduplication key.
+        /// Uses stacktrace boundary detection so multiline messages with the same content
+        /// are correctly deduplicated rather than only comparing the first line.
+        /// </summary>
+        private static string ExtractMessageForDedup(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                return string.Empty;
+            }
+
+            int stacktraceStart = FindStacktraceBoundary(message);
+            if (stacktraceStart >= 0)
+            {
+                return message.Substring(0, stacktraceStart).TrimEnd('\n', '\r');
+            }
+
+            return message;
+        }
+
+        /// <summary>
+        /// Finds the character index where the stacktrace begins within a combined message string.
+        /// Unity's LogEntry.message field contains both the user message and stacktrace separated by newlines.
+        /// A stacktrace line is identified by patterns like:
+        ///   - "ClassName:MethodName(" (method signature with colon)
+        ///   - Lines containing "(at " (Unity's file reference pattern)
+        ///   - Lines starting with "UnityEngine.", "UnityEditor.", or "System." followed by a method call
+        /// Returns the start index of the first stacktrace line, or -1 if no stacktrace is found.
+        /// </summary>
+        private static int FindStacktraceBoundary(string messageText)
+        {
+            if (string.IsNullOrEmpty(messageText))
+            {
+                return -1;
+            }
+
+            int currentIndex = 0;
+            while (currentIndex < messageText.Length)
+            {
+                // Find the end of the current line
+                int lineEnd = messageText.IndexOf('\n', currentIndex);
+                int lineLength = (lineEnd >= 0 ? lineEnd : messageText.Length) - currentIndex;
+                string line = messageText.Substring(currentIndex, lineLength).TrimEnd('\r');
+
+                if (IsStacktraceLine(line))
+                {
+                    return currentIndex;
+                }
+
+                // Move to the next line
+                if (lineEnd < 0)
+                {
+                    break;
+                }
+                currentIndex = lineEnd + 1;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
+        /// Determines whether a single line looks like a stacktrace entry.
+        /// </summary>
+        private static bool IsStacktraceLine(string line)
+        {
+            if (string.IsNullOrEmpty(line))
+            {
+                return false;
+            }
+
+            string trimmedLine = line.TrimStart();
+            if (trimmedLine.Length == 0)
+            {
+                return false;
+            }
+
+            // Pattern: contains "(at " which is Unity's file reference format
+            // e.g., "SomeClass:Method() (at Assets/Scripts/Foo.cs:42)"
+            if (trimmedLine.Contains("(at "))
+            {
+                return true;
+            }
+
+            // Pattern: "ClassName:MethodName(" - typical stacktrace method signature
+            // Must have a colon followed eventually by an opening parenthesis
+            int colonIndex = trimmedLine.IndexOf(':');
+            if (colonIndex > 0 && colonIndex < trimmedLine.Length - 1)
+            {
+                int parenIndex = trimmedLine.IndexOf('(', colonIndex);
+                if (parenIndex > colonIndex)
+                {
+                    // Verify the part before the colon looks like a class/namespace name
+                    // (starts with a letter or namespace prefix, no spaces before colon)
+                    string beforeColon = trimmedLine.Substring(0, colonIndex);
+                    if (beforeColon.Length > 0 && !beforeColon.Contains(" ") && char.IsLetter(beforeColon[0]))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        #endregion
+    }
+}

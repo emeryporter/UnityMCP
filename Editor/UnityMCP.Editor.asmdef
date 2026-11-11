@@ -1,0 +1,39 @@
+{
+    "name": "UnityMCP.Editor",
+    "rootNamespace": "UnityMCP.Editor",
+    "references": [
+        "UnityEditor.TestRunner",
+        "UnityEngine.TestRunner",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "1.0.0",
+            "define": "UNITY_MCP_INPUT_SYSTEM"
+        },
+        {
+            "name": "com.unity.textmeshpro",
+            "expression": "1.0.0",
+            "define": "UNITY_MCP_TMP"
+        },
+        {
+            "name": "Unity",
+            "expression": "6000.0.0",
+            "define": "UNITY_MCP_TMP"
+        }
+    ],
+    "noEngineReferences": false
+}
