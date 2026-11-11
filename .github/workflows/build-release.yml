@@ -1,13 +1,15 @@
 name: Build and Release
 
+# Push (not pull_request) so merges of fork PRs also release: workflows
+# triggered by fork pull_request events never receive repository secrets.
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
   workflow_dispatch:
 
+# Release pushes use the GitHub App token, so GITHUB_TOKEN only needs read.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release
@@ -16,11 +18,15 @@ concurrency:
 jobs:
   version:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    # Skip the bot's own "Release x.y.z" push, which would otherwise loop.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.actor != 'aloy-the-cat[bot]' &&
+       !startsWith(github.event.head_commit.message, 'Release '))
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-tags: true
 
@@ -60,7 +66,7 @@ jobs:
     needs: [version]
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build Windows DLL
         shell: bash
@@ -71,7 +77,7 @@ jobs:
             -o UnityMCPProxy.dll \
             -lws2_32
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-plugin
           path: Proxy~/UnityMCPProxy.dll
@@ -80,7 +86,7 @@ jobs:
     needs: [version]
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build macOS Bundle (Universal)
         run: |
@@ -91,7 +97,7 @@ jobs:
             -arch arm64 -arch x86_64 \
             -framework CoreFoundation -framework Security
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-plugin
           path: Proxy~/UnityMCPProxy.bundle
@@ -100,7 +106,7 @@ jobs:
     needs: [version]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build Linux Shared Library
         run: |
@@ -110,7 +116,7 @@ jobs:
             -o libUnityMCPProxy.so \
             -lpthread
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-plugin
           path: Proxy~/libUnityMCPProxy.so
@@ -121,30 +127,31 @@ jobs:
     steps:
       - name: Generate App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.APP_ID }}
+          # 'app-id' is deprecated in v3; 'client-id' accepts the App ID or Client ID.
+          client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token }}
           ref: main
 
       - name: Download Windows artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-plugin
           path: Package/Plugins/Windows/x86_64/
 
       - name: Download macOS artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: macos-plugin
           path: Package/Plugins/macOS/
 
       - name: Download Linux artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-plugin
           path: Package/Plugins/Linux/x86_64/
