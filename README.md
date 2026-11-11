@@ -9,9 +9,9 @@ Unity-native [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) se
 
 ---
 
-### New in v2.2
+### New in v3.0
 
-Canvas UI building tools, Input Action management, Project Settings management, batch execution, and merged vision capture.
+Releases now ship on a dedicated `latest` branch, and every native plugin in them is built by CI. **If you installed with a `?path=/Package` URL, update it**; see [Upgrading from 2.x](#upgrading-from-2x).
 
 ---
 
@@ -59,6 +59,16 @@ https://github.com/emeryporter/UnityMCP.git#3.0.0
 See [Releases](https://github.com/emeryporter/UnityMCP/releases) for available versions.
 
 Versions before 3.0 use https://github.com/emeryporter/UnityMCP.git?path=/Package#2.2.x.
+
+### Upgrading from 2.x
+
+Starting with 3.0, the `main` branch no longer contains the native plugin, so a `?path=/Package` URL without a version stops working. To upgrade:
+
+1. Open your project's `Packages/manifest.json`.
+2. Change the `com.emeryporter.unitymcp` entry to `https://github.com/emeryporter/UnityMCP.git#latest` (or a pinned version such as `#3.0.0`).
+3. Restart Unity. Native plugins load once per editor session.
+
+URLs pinned to a 2.x version (`?path=/Package#2.2.x`) keep working, but won't receive updates.
 
 ## Setup
 
@@ -673,9 +683,7 @@ Recipes are automatically discovered on domain reload and appear in `list_recipe
 
 ## Contributing
 
-- Don't commit native binaries (`.dll`, `.bundle`, `.so`). CI builds them from `Proxy~/` and publishes them with each release.
-- Before opening a local checkout in Unity, run `bash Proxy~/fetch_plugins.sh` to get the latest built plugins, or build them yourself with a `Proxy~/build_*` script.
-- The "No prebuilt binaries" check blocks pull requests that add or change binaries.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setting up a local checkout, building the native plugin, and how pull requests are checked. In short: run `bash Proxy~/fetch_plugins.sh` before opening a checkout in Unity, and don't commit native binaries, because CI builds them.
 
 ## License
 
