@@ -201,4 +201,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          gh release view "$VERSION" >/dev/null 2>&1 || gh release create "$VERSION" --verify-tag --generate-notes
+          if ! gh release view "$VERSION" >/dev/null 2>&1; then
+            bash .github/scripts/release-notes.sh "$VERSION" "$GITHUB_SHA" > ../release-notes.md
+            gh release create "$VERSION" --verify-tag --notes-file ../release-notes.md
+          fi
