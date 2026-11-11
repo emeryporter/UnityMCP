@@ -107,6 +107,15 @@ test_rejects_pre_3_tag() {
         || fail "expected the pre-3.0 message, got: $FETCH_OUTPUT"
 }
 
+# Replacing a loaded plugin file succeeds on every OS, but Unity keeps the old one until restart.
+test_reminds_to_restart_unity() {
+    setup_fixture
+    run_fetch_from "$CHECKOUT"
+    assert_eq "$FETCH_EXIT" "0"
+    echo "$FETCH_OUTPUT" | grep -qF "Restart Unity if it is open; native plugins load once per editor session." \
+        || fail "expected restart reminder, got: $FETCH_OUTPUT"
+}
+
 # Fetched binaries and metas are gitignored, so a fetch leaves the checkout clean.
 test_git_status_clean_after_fetch() {
     setup_fixture

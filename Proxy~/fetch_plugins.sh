@@ -39,3 +39,5 @@ for binary_path in "${binary_paths[@]}"; do
 done
 
 echo "Native plugins installed from $ref."
+# Replacing a loaded plugin usually succeeds, but Unity keeps using the copy it already loaded.
+echo "Restart Unity if it is open; native plugins load once per editor session."
