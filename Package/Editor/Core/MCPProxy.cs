@@ -329,9 +329,11 @@ namespace UnityMCP.Editor.Core
 
                 if (VerboseLogging) Debug.Log($"[MCPProxy] MCP proxy initialized on port {DEFAULT_PORT}");
             }
-            catch (DllNotFoundException dllException)
+            catch (DllNotFoundException)
             {
-                Debug.LogWarning($"[MCPProxy] Plugin not found: {dllException.Message}.");
+                var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(MCPProxy).Assembly);
+                Debug.LogError(InstallSourceCheck.MissingPluginMessage(
+                    packageInfo?.source ?? UnityEditor.PackageManager.PackageSource.Git));
             }
             catch (EntryPointNotFoundException entryPointException)
             {
