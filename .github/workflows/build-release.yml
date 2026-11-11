@@ -6,6 +6,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and assemble everything, upload the package as an artifact, push nothing"
+        type: boolean
+        default: false
 
 # Release pushes use the GitHub App token, so GITHUB_TOKEN only needs read.
 permissions:
@@ -133,60 +138,111 @@ jobs:
           client-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
+      # Exact commit that triggered the run (or the branch chosen for a dry run).
       - uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token }}
-          ref: main
+          ref: ${{ github.sha }}
+          path: src
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v8
         with:
           name: windows-plugin
-          path: Package/Plugins/Windows/x86_64/
+          path: artifacts/windows-plugin
 
       - name: Download macOS artifact
         uses: actions/download-artifact@v8
         with:
           name: macos-plugin
-          path: Package/Plugins/macOS/
+          path: artifacts/macos-plugin
 
       - name: Download Linux artifact
         uses: actions/download-artifact@v8
         with:
           name: linux-plugin
-          path: Package/Plugins/Linux/x86_64/
+          path: artifacts/linux-plugin
 
-      - name: Update version strings
-        run: |
-          VERSION="${{ needs.version.outputs.version }}"
-          sed -i 's/"version": "[^"]*"/"version": "'"$VERSION"'"/' Package/package.json
-          sed -i 's/const string ServerVersion = "[^"]*"/const string ServerVersion = "'"$VERSION"'"/' Package/Editor/Core/MCPServer.cs
-
-      - name: Copy README and LICENSE to Package
-        run: |
-          cp README.md Package/
-          cp LICENSE Package/
-
-      - name: Commit and tag
+      - name: Determine release state
+        id: state
+        working-directory: src
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          bash .github/scripts/check-release-ref.sh "$GITHUB_REF" "$DRY_RUN"
+          SHORT=$(git rev-parse --short=7 HEAD)
+          STATE=$(bash .github/scripts/release-state.sh "$VERSION" "$SHORT")
+          echo "Release $VERSION from main@$SHORT: $STATE"
+          if [ "$STATE" = "conflict" ]; then
+            echo "::error::Tag $VERSION already exists for a different commit."
+            exit 1
+          fi
+          echo "short=$SHORT" >> "$GITHUB_OUTPUT"
+          echo "state=$STATE" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble and commit latest branch
+        if: steps.state.outputs.state == 'new'
+        working-directory: src
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          SHORT: ${{ steps.state.outputs.short }}
         run: |
           git config user.name "Aloy the Cat[bot]"
           git config user.email "aloy-the-cat[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
-          git add Package/Plugins/ Package/package.json Package/Editor/Core/MCPServer.cs Package/README.md Package/LICENSE
-          if git diff --staged --quiet; then
-            echo "No changes to commit, skipping release"
+          if git ls-remote --exit-code --heads origin latest >/dev/null; then
+            git fetch origin latest:refs/remotes/origin/latest
+            git worktree add -B latest ../dist origin/latest
           else
-            VERSION="${{ needs.version.outputs.version }}"
-
-            # Check if tag already exists
-            if git rev-parse "$VERSION" >/dev/null 2>&1; then
-              echo "::error::Tag $VERSION already exists. This should not happen with auto-increment."
-              exit 1
-            fi
-
-            git commit -m "Release $VERSION"
-            git tag "$VERSION"
-            git push origin main --tags
+            git worktree add --orphan -b latest ../dist
           fi
+          # Assemble from the untouched pushed tree, before the legacy main commit below.
+          bash .github/scripts/assemble-package.sh . ../artifacts ../dist "$VERSION"
+          bash .github/scripts/verify-package.sh ../dist "$VERSION"
+          git -C ../dist add -A
+          git -C ../dist commit -q -m "Release $VERSION (from main@$SHORT)"
+
+      # Legacy 2.x path: keep publishing binaries on main (old ?path=/Package layout) and tag there.
+      - name: Commit and tag main (legacy layout)
+        if: steps.state.outputs.state == 'new'
+        working-directory: src
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          SHORT: ${{ steps.state.outputs.short }}
+        run: |
+          cp ../artifacts/windows-plugin/UnityMCPProxy.dll Package/Plugins/Windows/x86_64/
+          cp ../artifacts/macos-plugin/UnityMCPProxy.bundle Package/Plugins/macOS/
+          cp ../artifacts/linux-plugin/libUnityMCPProxy.so Package/Plugins/Linux/x86_64/
+          sed -i 's/"version": "[^"]*"/"version": "'"$VERSION"'"/' Package/package.json
+          sed -i 's/const string ServerVersion = "[^"]*"/const string ServerVersion = "'"$VERSION"'"/' Package/Editor/Core/MCPServer.cs
+          cp README.md LICENSE Package/
+          git add Package/Plugins/ Package/package.json Package/Editor/Core/MCPServer.cs Package/README.md Package/LICENSE
+          git commit -q -m "Release $VERSION (from main@$SHORT)"
+          git tag "$VERSION"
+
+      - name: Upload assembled package (dry run)
+        if: inputs.dry_run && steps.state.outputs.state == 'new'
+        uses: actions/upload-artifact@v7
+        with:
+          name: upm-package-${{ needs.version.outputs.version }}
+          path: dist/
+
+      - name: Push main, latest and tag
+        if: ${{ !inputs.dry_run && steps.state.outputs.state == 'new' }}
+        working-directory: src
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          # Atomic: either all three refs update or none do (e.g. main moved meanwhile).
+          git push --atomic origin HEAD:refs/heads/main refs/heads/latest:refs/heads/latest "refs/tags/$VERSION"
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        working-directory: src
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          gh release view "$VERSION" >/dev/null 2>&1 || gh release create "$VERSION" --verify-tag --generate-notes
