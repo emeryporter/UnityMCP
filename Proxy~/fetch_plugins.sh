@@ -35,7 +35,11 @@ for binary_path in "${binary_paths[@]}"; do
         echo "Could not replace $destination. Close Unity and retry (the plugin is loaded)." >&2
         exit 1
     fi
-    cp "release-meta/$binary_path.meta" "$destination.meta"
+    # The .meta is tracked. Unity deletes it if the project was opened while the plugin was missing;
+    # restore it then, but never overwrite a local edit.
+    if [ ! -f "$destination.meta" ]; then
+        git checkout -- "$destination.meta"
+    fi
 done
 
 echo "Native plugins installed from $ref."

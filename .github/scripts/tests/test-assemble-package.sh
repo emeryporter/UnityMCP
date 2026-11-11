@@ -32,18 +32,25 @@ test_places_binaries_and_metas() {
     assert_same_content "$DIST/Plugins/Windows/x86_64/UnityMCPProxy.dll" "$ARTIFACTS/windows-plugin/UnityMCPProxy.dll"
     assert_same_content "$DIST/Plugins/macOS/UnityMCPProxy.bundle" "$ARTIFACTS/macos-plugin/UnityMCPProxy.bundle"
     assert_same_content "$DIST/Plugins/Linux/x86_64/libUnityMCPProxy.so" "$ARTIFACTS/linux-plugin/libUnityMCPProxy.so"
-    assert_same_content "$DIST/Plugins/Windows/x86_64/UnityMCPProxy.dll.meta" "$SRC/release-meta/Plugins/Windows/x86_64/UnityMCPProxy.dll.meta"
-    assert_same_content "$DIST/Plugins/macOS/UnityMCPProxy.bundle.meta" "$SRC/release-meta/Plugins/macOS/UnityMCPProxy.bundle.meta"
-    assert_same_content "$DIST/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta" "$SRC/release-meta/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta"
+    assert_same_content "$DIST/Plugins/Windows/x86_64/UnityMCPProxy.dll.meta" "$SRC/Package/Plugins/Windows/x86_64/UnityMCPProxy.dll.meta"
+    assert_same_content "$DIST/Plugins/macOS/UnityMCPProxy.bundle.meta" "$SRC/Package/Plugins/macOS/UnityMCPProxy.bundle.meta"
+    assert_same_content "$DIST/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta" "$SRC/Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta"
 }
 
-test_copies_root_readme_and_license() {
+test_ships_readme_stub_and_root_license() {
     setup_fixture
     assemble
-    assert_same_content "$DIST/README.md" "$SRC/README.md"
+    assert_same_content "$DIST/README.md" "$SRC/Package/README.md"
     assert_same_content "$DIST/LICENSE" "$SRC/LICENSE"
     assert_file "$DIST/README.md.meta"
     assert_file "$DIST/LICENSE.meta"
+}
+
+test_needs_no_release_meta_folder() {
+    setup_fixture
+    assert_no_file "$SRC/release-meta"
+    assemble
+    assert_file "$DIST/package.json"
 }
 
 test_writes_version() {

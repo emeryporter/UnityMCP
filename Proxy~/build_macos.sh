@@ -33,6 +33,7 @@ fi
 echo "Copying to Package/Plugins folder..."
 mkdir -p "../Package/Plugins/macOS/"
 cp UnityMCPProxy.bundle ../Package/Plugins/macOS/
-cp ../release-meta/Plugins/macOS/UnityMCPProxy.bundle.meta ../Package/Plugins/macOS/
+# The .meta is tracked; restore it if Unity deleted it while the plugin was missing.
+[ -f ../Package/Plugins/macOS/UnityMCPProxy.bundle.meta ] || git -C .. checkout -- Package/Plugins/macOS/UnityMCPProxy.bundle.meta
 
 echo "Build successful: UnityMCPProxy.bundle"

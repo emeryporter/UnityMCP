@@ -17,6 +17,7 @@ setup_repo() {
     touch Package/Plugins/Linux/x86_64/.gitkeep
     echo "class A {}" > Package/Editor/A.cs
     echo "old binary" > Package/Plugins/Linux/x86_64/old.so
+    echo "plugin import settings" > Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta
     git_quiet add -A
     git_quiet commit -m base
     BASE_SHA="$(git rev-parse HEAD)"
@@ -76,9 +77,24 @@ test_bundle_directory_contents_fail() {
     expect_rejected "Native/Plugin.bundle/Contents/MacOS/Plugin"
 }
 
-test_plugin_binary_meta_fails() {
+test_unknown_plugin_file_fails() {
     setup_repo
-    echo "meta" > Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta
+    echo "notes" > Package/Plugins/Linux/x86_64/notes.txt
+    echo "meta" > Package/Plugins/Linux/x86_64/other.so.meta
+    commit_and_check
+    expect_rejected "Package/Plugins/Linux/x86_64/notes.txt" "Package/Plugins/Linux/x86_64/other.so.meta"
+}
+
+test_editing_plugin_meta_passes() {
+    setup_repo
+    echo "changed import setting" >> Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta
+    commit_and_check
+    assert_eq "$CHECK_EXIT" "0"
+}
+
+test_deleting_plugin_meta_fails() {
+    setup_repo
+    git rm -q Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta
     commit_and_check
     expect_rejected "Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta"
 }

@@ -14,7 +14,7 @@ git_quiet() {
 }
 
 # Builds: UPSTREAM (bare, branch `latest` with root-layout binaries), ORIGIN (bare, only `main`),
-# CHECKOUT (clone of ORIGIN holding the real fetch_plugins.sh, release-meta/ and .gitignore).
+# CHECKOUT (clone of ORIGIN holding the real fetch_plugins.sh, the tracked plugin .meta files and .gitignore).
 setup_fixture() {
     local root
     root="$(mktemp -d)"
@@ -37,10 +37,13 @@ setup_fixture() {
     git_quiet -C "$UPSTREAM" branch -m main latest
 
     local source_tree="$root/source"
-    mkdir -p "$source_tree/Proxy~" "$source_tree/Package/Plugins"
+    mkdir -p "$source_tree/Proxy~"
     cp "$REPO_ROOT/Proxy~/fetch_plugins.sh" "$source_tree/Proxy~/"
-    cp -R "$REPO_ROOT/release-meta" "$source_tree/"
     cp "$REPO_ROOT/.gitignore" "$source_tree/"
+    for binary_path in "${BINARY_PATHS[@]}"; do
+        mkdir -p "$source_tree/Package/$(dirname "$binary_path")"
+        cp "$REPO_ROOT/Package/$binary_path.meta" "$source_tree/Package/$binary_path.meta"
+    done
     git_quiet -C "$source_tree" init
     git_quiet -C "$source_tree" add -A
     git_quiet -C "$source_tree" commit -m "source"
@@ -62,9 +65,30 @@ assert_binaries_fetched() {
     local binary_path
     for binary_path in "${BINARY_PATHS[@]}"; do
         assert_eq "$(cat "$CHECKOUT/Package/$binary_path")" "upstream bytes for $binary_path"
-        # Compare with the checkout's own release-meta (line endings follow that clone's autocrlf).
-        assert_same_content "$CHECKOUT/Package/$binary_path.meta" "$CHECKOUT/release-meta/$binary_path.meta"
+        # The tracked .meta must be present and identical to the committed version.
+        assert_file "$CHECKOUT/Package/$binary_path.meta"
+        git -C "$CHECKOUT" diff --quiet -- "Package/$binary_path.meta" || fail "meta changed: $binary_path.meta"
     done
+}
+
+test_restores_metas_deleted_by_unity() {
+    setup_fixture
+    local binary_path
+    for binary_path in "${BINARY_PATHS[@]}"; do
+        rm "$CHECKOUT/Package/$binary_path.meta"
+    done
+    run_fetch_from "$CHECKOUT"
+    assert_eq "$FETCH_EXIT" "0"
+    assert_binaries_fetched
+}
+
+test_keeps_locally_edited_meta() {
+    setup_fixture
+    local edited_meta="$CHECKOUT/Package/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta"
+    echo "local import setting edit" >> "$edited_meta"
+    run_fetch_from "$CHECKOUT"
+    assert_eq "$FETCH_EXIT" "0"
+    assert_contains "$edited_meta" "local import setting edit"
 }
 
 test_fetches_binaries_and_metas() {

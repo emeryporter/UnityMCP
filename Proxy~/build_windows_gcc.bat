@@ -46,10 +46,13 @@ if errorlevel 1 (
     echo ERROR: Failed to copy DLL to Package/Plugins folder
     exit /b 1
 )
-copy /Y "..\release-meta\Plugins\Windows\x86_64\UnityMCPProxy.dll.meta" "..\Package\Plugins\Windows\x86_64\"
-if errorlevel 1 (
-    echo ERROR: Failed to copy UnityMCPProxy.dll.meta from release-meta
-    exit /b 1
+:: The .meta is tracked; restore it if Unity deleted it while the plugin was missing.
+if not exist "..\Package\Plugins\Windows\x86_64\UnityMCPProxy.dll.meta" (
+    git -C .. checkout -- Package/Plugins/Windows/x86_64/UnityMCPProxy.dll.meta
+    if errorlevel 1 (
+        echo ERROR: Failed to restore UnityMCPProxy.dll.meta from git
+        exit /b 1
+    )
 )
 
 :: Clean up intermediate files
