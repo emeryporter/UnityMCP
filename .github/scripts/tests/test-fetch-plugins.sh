@@ -107,8 +107,8 @@ test_rejects_pre_3_tag() {
         || fail "expected the pre-3.0 message, got: $FETCH_OUTPUT"
 }
 
-# requires Task 8 (.gitignore entries for the binaries and their metas); renamed to test_ there.
-pending_test_git_status_clean_after_fetch() {
+# Fetched binaries and metas are gitignored, so a fetch leaves the checkout clean.
+test_git_status_clean_after_fetch() {
     setup_fixture
     run_fetch_from "$CHECKOUT"
     assert_eq "$FETCH_EXIT" "0"

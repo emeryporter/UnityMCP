@@ -45,7 +45,7 @@ Canvas UI building tools, Input Action management, Project Settings management, 
 ### Latest version (recommended)
 
 ```
-https://github.com/emeryporter/UnityMCP.git?path=/Package
+https://github.com/emeryporter/UnityMCP.git#latest
 ```
 
 ### Specific version
@@ -53,10 +53,12 @@ https://github.com/emeryporter/UnityMCP.git?path=/Package
 Append a `#version` tag to pin to a release:
 
 ```
-https://github.com/emeryporter/UnityMCP.git?path=/Package#2.2.0
+https://github.com/emeryporter/UnityMCP.git#3.0.0
 ```
 
 See [Releases](https://github.com/emeryporter/UnityMCP/releases) for available versions.
+
+Versions before 3.0 use https://github.com/emeryporter/UnityMCP.git?path=/Package#2.2.x.
 
 ## Setup
 
@@ -668,6 +670,12 @@ public static class MyRecipes
 Recipes are automatically discovered on domain reload and appear in `list_recipes` output.
 
 </details>
+
+## Contributing
+
+- Don't commit native binaries (`.dll`, `.bundle`, `.so`). CI builds them from `Proxy~/` and publishes them with each release.
+- Before opening a local checkout in Unity, run `bash Proxy~/fetch_plugins.sh` to get the latest built plugins, or build them yourself with a `Proxy~/build_*` script.
+- The "No prebuilt binaries" check blocks pull requests that add or change binaries.
 
 ## License
 
