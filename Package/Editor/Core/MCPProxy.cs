@@ -331,7 +331,14 @@ namespace UnityMCP.Editor.Core
             }
             catch (DllNotFoundException dllException)
             {
-                Debug.LogWarning($"[MCPProxy] Plugin not found: {dllException.Message}.");
+                var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(MCPProxy).Assembly);
+                // Unknown location (e.g. package copied into Assets): report the load error, don't guess "missing".
+                bool pluginFilePresent = packageInfo == null
+                    || InstallSourceCheck.IsPluginFilePresent(packageInfo.resolvedPath, Application.platform);
+                Debug.LogError(InstallSourceCheck.MissingPluginMessage(
+                    packageInfo?.source ?? UnityEditor.PackageManager.PackageSource.Git,
+                    pluginFilePresent,
+                    dllException.Message));
             }
             catch (EntryPointNotFoundException entryPointException)
             {

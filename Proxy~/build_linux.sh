@@ -32,5 +32,6 @@ fi
 echo "Copying to Package/Plugins folder..."
 mkdir -p "../Package/Plugins/Linux/x86_64/"
 cp libUnityMCPProxy.so ../Package/Plugins/Linux/x86_64/
+cp ../release-meta/Plugins/Linux/x86_64/libUnityMCPProxy.so.meta ../Package/Plugins/Linux/x86_64/
 
 echo "Build successful: libUnityMCPProxy.so"

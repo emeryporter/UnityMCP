@@ -23,49 +23,23 @@ concurrency:
 jobs:
   version:
     runs-on: ubuntu-latest
-    # Skip the bot's own "Release x.y.z" push, which would otherwise loop.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.actor != 'aloy-the-cat[bot]' &&
-       !startsWith(github.event.head_commit.message, 'Release '))
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
+      # Full history + tags: version selection reads release tag subjects.
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           fetch-tags: true
 
+      # Reuses the version if this commit was already released (so re-runs resume, never re-publish);
+      # otherwise the higher of (latest tag + 1 patch) and package.json, for manual minor/major bumps.
       - name: Generate version
         id: version
         run: |
-          # Get latest semver tag (x.y.z format)
-          git fetch --tags
-          LATEST=$(git tag -l --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
-
-          if [ -z "$LATEST" ]; then
-            # No tags exist - let package.json decide the first version
-            AUTO_VERSION="0.0.0"
-          else
-            # Increment patch version from latest tag
-            MAJOR=$(echo "$LATEST" | cut -d. -f1)
-            MINOR=$(echo "$LATEST" | cut -d. -f2)
-            PATCH=$(echo "$LATEST" | cut -d. -f3)
-            AUTO_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-          fi
-
-          # Get version from package.json
-          PKG_VERSION=$(grep '"version"' Package/package.json | sed 's/.*"version": "\([^"]*\)".*/\1/')
-
-          # Use the higher of auto-incremented or package.json version
-          # This allows manual minor/major bumps via package.json while
-          # still auto-incrementing patches for regular releases
-          VERSION=$(printf '%s\n%s' "$AUTO_VERSION" "$PKG_VERSION" | sort -V | tail -n1)
-
-          echo "Latest tag: $LATEST"
-          echo "Auto-increment version: $AUTO_VERSION"
-          echo "Package.json version: $PKG_VERSION"
+          VERSION=$(bash .github/scripts/select-version.sh "$(git rev-parse --short=7 HEAD)" Package/package.json)
           echo "Selected version: $VERSION"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   build-windows:
     needs: [version]
@@ -198,29 +172,11 @@ jobs:
           else
             git worktree add --orphan -b latest ../dist
           fi
-          # Assemble from the untouched pushed tree, before the legacy main commit below.
           bash .github/scripts/assemble-package.sh . ../artifacts ../dist "$VERSION"
           bash .github/scripts/verify-package.sh ../dist "$VERSION"
           git -C ../dist add -A
           git -C ../dist commit -q -m "Release $VERSION (from main@$SHORT)"
-
-      # Legacy 2.x path: keep publishing binaries on main (old ?path=/Package layout) and tag there.
-      - name: Commit and tag main (legacy layout)
-        if: steps.state.outputs.state == 'new'
-        working-directory: src
-        env:
-          VERSION: ${{ needs.version.outputs.version }}
-          SHORT: ${{ steps.state.outputs.short }}
-        run: |
-          cp ../artifacts/windows-plugin/UnityMCPProxy.dll Package/Plugins/Windows/x86_64/
-          cp ../artifacts/macos-plugin/UnityMCPProxy.bundle Package/Plugins/macOS/
-          cp ../artifacts/linux-plugin/libUnityMCPProxy.so Package/Plugins/Linux/x86_64/
-          sed -i 's/"version": "[^"]*"/"version": "'"$VERSION"'"/' Package/package.json
-          sed -i 's/const string ServerVersion = "[^"]*"/const string ServerVersion = "'"$VERSION"'"/' Package/Editor/Core/MCPServer.cs
-          cp README.md LICENSE Package/
-          git add Package/Plugins/ Package/package.json Package/Editor/Core/MCPServer.cs Package/README.md Package/LICENSE
-          git commit -q -m "Release $VERSION (from main@$SHORT)"
-          git tag "$VERSION"
+          git -C ../dist tag "$VERSION"
 
       - name: Upload assembled package (dry run)
         if: inputs.dry_run && steps.state.outputs.state == 'new'
@@ -229,14 +185,14 @@ jobs:
           name: upm-package-${{ needs.version.outputs.version }}
           path: dist/
 
-      - name: Push main, latest and tag
+      - name: Push latest and tag
         if: ${{ !inputs.dry_run && steps.state.outputs.state == 'new' }}
         working-directory: src
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          # Atomic: either all three refs update or none do (e.g. main moved meanwhile).
-          git push --atomic origin HEAD:refs/heads/main refs/heads/latest:refs/heads/latest "refs/tags/$VERSION"
+          # Atomic: the branch and its tag update together or not at all. Nothing is pushed to main.
+          git push --atomic origin refs/heads/latest:refs/heads/latest "refs/tags/$VERSION"
 
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
@@ -245,4 +201,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          gh release view "$VERSION" >/dev/null 2>&1 || gh release create "$VERSION" --verify-tag --generate-notes
+          if ! gh release view "$VERSION" >/dev/null 2>&1; then
+            bash .github/scripts/release-notes.sh "$VERSION" "$GITHUB_SHA" > ../release-notes.md
+            gh release create "$VERSION" --verify-tag --notes-file ../release-notes.md
+          fi
