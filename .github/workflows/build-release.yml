@@ -170,7 +170,9 @@ jobs:
         working-directory: src
         env:
           VERSION: ${{ needs.version.outputs.version }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
+          bash .github/scripts/check-release-ref.sh "$GITHUB_REF" "$DRY_RUN"
           SHORT=$(git rev-parse --short=7 HEAD)
           STATE=$(bash .github/scripts/release-state.sh "$VERSION" "$SHORT")
           echo "Release $VERSION from main@$SHORT: $STATE"
